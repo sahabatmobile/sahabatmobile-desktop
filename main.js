@@ -2096,6 +2096,11 @@ async function remoteList(session, dir) {
 }
 
 async function remoteRead(session, filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const imageExts = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.ico', '.tiff', '.tif']);
+  if (imageExts.has(ext)) {
+    throw new Error('File gambar (' + ext + ') tidak bisa dibaca sebagai teks. Model yang dipakai tidak mendukung input gambar. Untuk gambar, gunakan chat biasa (lampirkan gambar di chat) atau ganti ke model yang mendukung vision.');
+  }
   if (session.type === 'ssh') {
     const buf = await new Promise((resolve, reject) => {
       session.sftp.readFile(filePath, (err, data) => (err ? reject(err) : resolve(data)));
@@ -3425,6 +3430,11 @@ ipcMain.handle('agent:readFile', async (event, payload) => {
       return { ok: true, content: content.length > 120000 ? content.slice(0, 120000) + '\n...[dipotong]' : content };
     }
     const abs = resolveInRoot(payload.path);
+    const ext = path.extname(abs).toLowerCase();
+    const imageExts = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.ico', '.tiff', '.tif']);
+    if (imageExts.has(ext)) {
+      return { ok: false, error: 'File gambar (' + ext + ') tidak bisa dibaca sebagai teks. Model yang dipakai tidak mendukung input gambar. Untuk gambar, gunakan chat biasa (lampirkan gambar di chat) atau ganti ke model yang mendukung vision.' };
+    }
     const buf = await fs.promises.readFile(abs);
     const content = assertTextBuffer(buf, 'File');
     return { ok: true, path: abs, content: content.length > 120000 ? content.slice(0, 120000) + '\n...[dipotong]' : content };
