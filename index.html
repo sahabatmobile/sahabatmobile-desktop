@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://open-vsx.org https://openvsx.eclipsecontent.org; connect-src 'none'; font-src 'self' data:;" />
+  <title>SahabatMobile Desktop</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="vendor/xterm/xterm.css" />
+</head>
+<body>
+  <div class="app no-side" id="app">
+    <div class="activitybar">
+      <button class="act active" data-view="chat" title="Chat">
+        <svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.6A8.6 8.6 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg>
+      </button>
+      <button class="act" data-view="workspace" title="Developer / Explorer">
+        <svg viewBox="0 0 24 24"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>
+      </button>
+      <button class="act" data-view="models" title="Model">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+      <button class="act" data-view="api" title="API &amp; Snippet">
+        <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </button>
+      <button class="act" data-view="extensions" title="Extensions">
+        <svg viewBox="0 0 24 24"><path d="M10 3h4v3a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4v-3a2 2 0 1 0-4 0v3h-4v-3a2 2 0 1 0-4 0v3H3v-4h3a2 2 0 1 0 0-4H3V6h3a2 2 0 1 0 4 0z"/></svg>
+      </button>
+      <div class="act-spacer"></div>
+      <button class="act" id="actSettings" title="Pengaturan">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
+
+    <aside class="sidepanel" id="sidepanel">
+      <div id="explorerPane" class="side-section">
+        <div class="side-title">
+          <span>EXPLORER</span>
+          <div class="side-actions">
+            <button id="newFile" class="icon-btn" title="File baru">+</button>
+            <button id="newFolder" class="icon-btn" title="Folder baru">⊞</button>
+            <button id="refreshExplorer" class="icon-btn" title="Muat ulang">⟳</button>
+            <button id="explorerMax" class="icon-btn" title="Perbesar panel explorer"><svg viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M4 4l6 6M20 20h-6M20 20v-6M20 20l-6-6"/></svg></button>
+            <button id="explorerClose" class="icon-btn" title="Tutup panel explorer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </div>
+        </div>
+        <div class="target-bar">
+          <select id="targetSelect" title="Target explorer"></select>
+          <button id="mapDriveTop" class="icon-btn hidden" title="Map seluruh VPS ke drive Windows"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 12h2M16 12h2M10 17v2M14 17v2"/></svg></button>
+          <button id="sshDisconnectTop" class="icon-btn hidden ssh-disconnect" title="Putuskan koneksi SSH"><svg viewBox="0 0 24 24"><path d="M8 16l-5-5 5-5"/><path d="M3 11h10"/><path d="M15 8l5 5-5 5"/><path d="M21 13h-10"/><path d="M5 4l14 16"/></svg></button>
+          <button id="editConnectionTop" class="icon-btn hidden" title="Edit koneksi SSH"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button id="newConnection" class="icon-btn" title="Koneksi SSH / FTP baru">＋</button>
+        </div>
+        <div class="root-path small muted" id="wsRoot">Belum ada folder</div>
+        <div id="fileTree" class="tree"></div>
+        <div class="quick-actions">
+          <button id="openFolder" class="ghost small">Open Folder</button>
+          <button id="cloneRepo" class="ghost small">Clone Repo</button>
+          <button id="savedConnections" class="ghost small">Koneksi tersimpan</button>
+          <button id="disconnectRemote" class="ghost small hidden">Disconnect</button>
+        </div>
+        <div class="side-status" id="sideStatus"><span id="sideStatusText">Siap</span><button id="openTerminal" class="ghost small hidden" title="Tampilkan panel terminal">Terminal</button></div>
+      </div>
+
+      <div id="extensionPane" class="side-section hidden">
+        <div class="side-title ext-title-row">
+          <span>EXTENSIONS</span>
+          <div class="side-actions">
+            <button id="extRefreshSide" class="icon-btn" title="Muat ulang">⟳</button>
+          </div>
+        </div>
+        <div class="ext-search-row">
+          <div class="ext-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg>
+          </div>
+          <input id="extSearch" placeholder="Search Extensions" autocomplete="off" />
+        </div>
+        <select id="extFilter" class="ext-filter" aria-label="Filter ekstensi">
+          <option value="all">Semua ekstensi</option>
+          <option value="installed">Terpasang</option>
+          <option value="updates">Update tersedia</option>
+          <option value="recommended">Rekomendasi</option>
+          <option value="builtin">Katalog bawaan</option>
+        </select>
+        <div id="extList" class="ext-side-list"></div>
+        <div class="quick-actions ext-footer-actions">
+          <button id="extInstallFolder" class="ghost small">Install dari folder</button>
+          <button id="extInstallZip" class="ghost small">Install dari .zip</button>
+          <button id="extUpdateAll" class="ghost small hidden">Update semua</button>
+          <button id="extOpenDir" class="ghost small">Buka folder ekstensi</button>
+        </div>
+        <div class="side-status ext-bottom-status" id="extStatus">Tidak ada ekstensi</div>
+      </div>
+
+      <div id="connectionPane" class="side-section hidden">
+        <div class="side-title">
+          <span id="connectionPaneTitle">KONEKSI BARU</span>
+          <button id="closeConnection" class="icon-btn" title="Tutup">×</button>
+        </div>
+        <form id="connForm" class="conn-form">
+          <label>Nama koneksi
+            <input id="connName" placeholder="VPS Produksi" />
+          </label>
+          <label>Protokol
+            <select id="connProtocol">
+              <option value="sftp">SSH / SFTP</option>
+              <option value="mysql">MySQL / MariaDB</option>
+              <option value="postgres">PostgreSQL</option>
+              <option value="sqlserver">SQL Server</option>
+              <option value="sqlite">SQLite (file lokal)</option>
+              <option value="mongodb">MongoDB</option>
+              <option value="redis">Redis</option>
+              <option value="elasticsearch">Elasticsearch</option>
+              <option value="ftp">FTP</option>
+              <option value="ftps">FTPS</option>
+            </select>
+          </label>
+          <label id="connHostField">Host / IP
+            <input id="connHost" placeholder="103.150.1.2" required />
+          </label>
+          <label id="connPortField">Port
+            <input id="connPort" type="number" value="22" />
+          </label>
+          <label id="connUserField">Username
+            <input id="connUser" placeholder="root" required />
+          </label>
+          <label id="connPasswordField">Password
+            <input id="connPassword" type="password" placeholder="••••••" />
+          </label>
+          <label id="connDatabaseField" class="hidden">Database / Index <span class="muted">(opsional)</span>
+            <input id="connDatabase" placeholder="kosong = default" autocomplete="off" />
+          </label>
+          <label id="connFileField" class="hidden">File database SQLite
+            <div class="field-row" style="margin:0">
+              <input id="connFile" class="grow" style="flex:1;min-width:0" placeholder="C:\data\app.db" autocomplete="off" />
+              <button type="button" id="connFileBrowse" class="ghost small">Pilih</button>
+            </div>
+          </label>
+          <label id="connKeyField" class="hidden">Private Key
+            <input id="connKey" placeholder="C:\Users\...\.ssh\id_rsa" />
+          </label>
+          <label id="connPassphraseField" class="hidden">Passphrase Private Key
+            <input id="connPassphrase" type="password" placeholder="Kosongkan jika tidak ada" autocomplete="new-password" />
+          </label>
+          <label class="mini-check"><input id="connSave" type="checkbox" checked /> Simpan koneksi ini</label>
+          <div class="conn-form-actions">
+            <button type="button" class="ghost small hidden" id="connSaveOnly">Simpan</button>
+            <button type="submit" class="primary small" id="connSubmit">Hubungkan</button>
+          </div>
+          <p class="hint" id="connHint">Password tidak disimpan. Untuk SSH bisa memakai private key.</p>
+        </form>
+      </div>
+    </aside>
+    <div class="resizer resizer-left" id="resizeLeft" title="Geser panel kiri"></div>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="title" id="viewTitle">Chat</div>
+        <div class="controls">
+          <select id="modelSelect" title="Pilih model"></select>
+          <button id="updateBadge" class="badge update hidden" title="Pembaruan tersedia">Update</button>
+          <span id="keyBadge" class="badge off">Key belum diisi</span>
+          <button id="openSettings" class="ghost small">Pengaturan</button>
+        </div>
+      </header>
+
+      <section id="view-chat" class="view">
+        <div class="chat" id="chat"></div>
+        <div class="composer" id="composer">
+          <div id="chatAttachments" class="attachments hidden"></div>
+          <textarea id="chatInput" rows="2" placeholder="Tanya apa saja... (Enter kirim, Shift+Enter baris baru, tempel gambar dengan Ctrl+V)"></textarea>
+          <div class="actions">
+            <button id="attachChat" class="ghost small" title="Lampirkan gambar (atau tempel / seret ke sini)">Gambar</button>
+            <input id="chatFiles" type="file" accept="image/*" multiple class="file-hidden" />
+            <button class="ghost small shortcut-help-btn" title="Panduan shortcut (Enter kirim, Shift+Enter baris baru)">⌨ Shortcut</button>
+            <span id="chatStatus" class="status"></span>
+            <button id="newChat" class="ghost small" title="Mulai percakapan baru">Chat baru</button>
+            <button id="stopChat" class="ghost small hidden">Stop</button>
+            <button id="sendChat" class="primary">Kirim</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-workspace" class="view hidden">
+        <div class="workspace">
+          <button id="explorerRail" class="side-rail hidden" title="Tampilkan panel explorer"><span>EXPLORER</span></button>
+          <button id="agentRail" class="side-rail side-rail-right hidden" title="Tampilkan panel agent"><span>AGENT</span></button>
+          <div class="ws-editor">
+            <div class="tabbar" id="tabbar"></div>
+            <div id="editor" class="editor"></div>
+            <div id="dbPane" class="db-pane hidden">
+              <div class="db-toolbar">
+                <select id="dbDatabase" title="Database aktif"></select>
+                <button id="dbRun" class="primary small" type="button">Run</button>
+                <button id="dbRefresh" class="ghost small" type="button" title="Muat ulang daftar database & tabel">Refresh</button>
+                <button id="dbExport" class="ghost small" type="button" title="Export hasil query ke CSV">Export CSV</button>
+                <span id="dbStatus" class="small muted"></span>
+              </div>
+              <div id="sqlEditorHost" class="sql-editor-host"></div>
+              <div class="db-result-head">
+                <span>HASIL</span>
+                <span id="dbRowCount" class="small muted"></span>
+              </div>
+              <div id="dbResult" class="db-result"></div>
+            </div>
+            <div class="terminal-pane" id="termPane">
+              <div class="pane-head">
+                <span>TERMINAL</span>
+                <span id="termLabel" class="small muted"></span>
+                <div class="pane-actions">
+                  <button id="termClear" class="ghost small" title="Bersihkan terminal aktif">Bersihkan</button>
+                  <button id="termNewTab" class="icon-btn" title="Terminal baru"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+                  <button id="termToggle" class="icon-btn" title="Minimize / restore panel terminal"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+                  <button id="termMax" class="icon-btn" title="Maximize / restore panel terminal"><svg viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M4 4l6 6M20 20h-6M20 20v-6M20 20l-6-6"/></svg></button>
+                  <button id="termClose" class="icon-btn" title="Tutup panel terminal"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </div>
+              </div>
+              <div id="termTabs" class="term-tabs"></div>
+              <div id="termHosts" class="term-hosts"></div>
+            </div>
+          </div>
+
+          <div class="resizer resizer-agent" id="resizeAgent" title="Geser panel agent"></div>
+
+          <div class="ws-agent" id="agentPane">
+            <div class="pane-head">
+              <span>AGENT</span>
+              <div class="pane-actions">
+                <select id="agentThinking" class="mini-select" title="Thinking (reasoning effort) agent">
+                  <option value="default">Thinking: Default</option>
+                  <option value="low">Thinking: Low</option>
+                  <option value="mid">Thinking: Mid</option>
+                  <option value="high">Thinking: High</option>
+                  <option value="xhigh">Thinking: XHigh</option>
+                </select>
+                <span id="agentTarget" class="agent-target">lokal</span>
+                <button id="agentMax" class="icon-btn" title="Perbesar panel agent"><svg viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M4 4l6 6M20 20h-6M20 20v-6M20 20l-6-6"/></svg></button>
+                <button id="agentClose" class="icon-btn" title="Tutup panel agent"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+              </div>
+            </div>
+            <div id="agentLog" class="agent-log">
+              <div class="agent-empty">
+                <div class="agent-empty-title">Agent</div>
+                <p>Memahami tugas kompleks, memperbaiki bug, dan membuat project baru.</p>
+                <ul>
+                  <li>Membaca dan menulis file di explorer aktif</li>
+                  <li>Menjalankan perintah (dengan konfirmasi)</li>
+                  <li>Bekerja di folder lokal, SSH/SFTP, atau FTP</li>
+                </ul>
+              </div>
+            </div>
+            <button id="agentJump" class="agent-jump hidden" type="button" title="Lompat ke output terbaru">↓ Output terbaru</button>
+            <div class="agent-input">
+              <textarea id="agentInput" rows="3" placeholder="Minta agen memperbaiki atau membuat project di explorer aktif... (Enter kirim, Shift+Enter baris baru)"></textarea>
+              <div class="actions">
+                <label class="mini-check"><input type="checkbox" id="allowCmd" /> izinkan perintah</label>
+                <button class="ghost small shortcut-help-btn" title="Panduan shortcut">⌨ Shortcut</button>
+                <span id="agentStatus" class="status small"></span>
+                <button id="agentStop" class="ghost small hidden" type="button">Stop</button>
+                <button id="agentSend" class="primary small">Kirim</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-models" class="view hidden">
+        <div class="panel">
+          <h2>Model</h2>
+          <p class="muted">Daftar model dari gateway SahabatMobile. Klik <em>Pakai</em> untuk menjadikannya model aktif, atau salin ID-nya.</p>
+          <div class="field-row">
+            <div class="field grow">
+              <label>Cari model</label>
+              <input id="modelSearch" placeholder="mis. minimax, mimo, gpt" />
+            </div>
+            <button id="refreshModels" class="ghost">Muat ulang</button>
+          </div>
+          <div id="modelList" class="model-list"></div>
+        </div>
+      </section>
+
+      <section id="view-api" class="view hidden">
+        <div class="panel">
+          <h2>API &amp; Snippet</h2>
+          <p class="muted">Pakai gateway SahabatMobile dari aplikasi apa pun yang mendukung API OpenAI. Ganti <code>sk-...</code> dengan API key Anda.</p>
+
+          <div class="field-row">
+            <div class="field grow">
+              <label>Base URL</label>
+              <div class="value" id="apiBase">https://www.sahabatmobile.com/api/v1</div>
+            </div>
+            <button id="copyBase" class="ghost">Salin</button>
+          </div>
+
+          <div class="chips" id="snippetChips">
+            <button class="chip active" data-snippet="curl">cURL</button>
+            <button class="chip" data-snippet="python">Python</button>
+            <button class="chip" data-snippet="node">Node.js</button>
+            <button class="chip" data-snippet="opencode">OpenCode</button>
+          </div>
+          <pre class="code" id="snippetCode"></pre>
+          <div class="row-actions">
+            <button id="copySnippet" class="primary">Salin snippet</button>
+          </div>
+
+          <div class="note">
+            Model yang dipakai: <strong id="apiModel">-</strong>. Untuk agent / tool calling pilih <strong>MiniMax-M3</strong>.
+          </div>
+        </div>
+      </section>
+
+      <section id="view-extensions" class="view hidden">
+        <div id="extDetail" class="ext-detail"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Pengaturan</h3>
+      <label>API Key SahabatMobile
+        <input id="apiKeyInput" type="password" placeholder="sk-..." autocomplete="off" />
+      </label>
+      <p class="hint">Key disimpan terenkripsi di perangkat ini. Belum punya? Ambil di halaman API Keys / Plan Details akun SahabatMobile.</p>
+      <label>Base URL
+        <input id="baseUrlInput" placeholder="https://www.sahabatmobile.com/api/v1" />
+      </label>
+      <div class="update-box" style="margin-top:14px">
+        <div class="update-head">
+          <span>Model &amp; paket API</span>
+        </div>
+        <label>Mode paket
+          <select id="modelAccessModeSelect">
+            <option value="auto">Otomatis (deteksi paket dari API key)</option>
+            <option value="payg">Pay-as-you-go (semua model)</option>
+            <option value="hemat">Paket Hemat (mimo-v2.5)</option>
+            <option value="coding">Paket Coding (5 model)</option>
+            <option value="minimax">Paket MiniMax (5 model)</option>
+            <option value="pro">Paket Pro (12 model)</option>
+          </select>
+        </label>
+        <label class="mini-check"><input id="modelAccessAllCheck" type="checkbox" /> Tampilkan semua model (abaikan filter paket)</label>
+        <div id="modelAccessInfo" class="hint">Deteksi model yang diizinkan paket Anda…</div>
+        <div class="mini-actions">
+          <button id="detectModels" class="ghost small" type="button">Deteksi ulang</button>
+          <button id="resetBlockedModels" class="ghost small" type="button">Reset model ditolak</button>
+        </div>
+        <p class="hint">Saat API key bersubskripsi paket (mis. Hemat), hanya model yang diizinkan paket yang dimuat di daftar model. Model yang ditolak gateway saat dipakai akan otomatis disembunyikan.</p>
+      </div>
+      <label>Tema editor
+        <select id="editorThemeSelect">
+          <option value="tomorrow_night">Tomorrow Night</option>
+          <option value="one_dark">One Dark</option>
+          <option value="monokai">Monokai</option>
+          <option value="dracula">Dracula</option>
+          <option value="nord_dark">Nord Dark</option>
+          <option value="tomorrow_night_blue">Tomorrow Night Blue</option>
+          <option value="tomorrow">Tomorrow Light</option>
+        </select>
+      </label>
+      <div class="update-box">
+        <div class="update-head">
+          <span>Versi aplikasi <strong id="appVersion">-</strong></span>
+          <button id="checkUpdate" class="ghost small" type="button">Cek pembaruan</button>
+        </div>
+        <div id="updateStatus" class="hint update-status"></div>
+        <label class="mini-check"><input id="autoUpdateCheck" type="checkbox" /> Cek pembaruan otomatis saat aplikasi dibuka</label>
+        <label>URL feed pembaruan
+          <input id="updateFeedInput" placeholder="https://.../update.json atau GitHub releases API" />
+        </label>
+        <p class="hint">Feed berupa JSON <code>{"version":"1.2.0","url":"https://...","notes":"..."}</code> atau respons GitHub Releases API.</p>
+      </div>
+      <div class="modal-actions">
+        <button id="cancelSettings" class="ghost">Batal</button>
+        <button id="saveSettings" class="primary">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="promptModal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="promptTitle">Nama</h3>
+      <input id="promptInput" placeholder="" autocomplete="off" />
+      <div class="modal-actions">
+        <button id="promptCancel" class="ghost">Batal</button>
+        <button id="promptOk" class="primary">Buat</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="contextMenu" class="context-menu hidden"></div>
+
+  <div id="mapModal" class="modal hidden">
+    <div class="modal-card map-card">
+      <h3>Map Drive VPS</h3>
+      <div id="mapRequirement" class="map-requirement hidden">
+        <div class="map-requirement-title">Tools belum lengkap</div>
+        <p id="mapRequirementText">Mount butuh rclone dan WinFsp.</p>
+        <div class="map-install-buttons">
+          <button id="mapInstallRclone" class="primary small" type="button">Install rclone otomatis</button>
+          <button id="mapInstallWinFsp" class="ghost small" type="button">Install WinFsp...</button>
+          <button id="mapInstallSshfs" class="ghost small" type="button">Install SSHFS-Win...</button>
+        </div>
+      </div>
+      <p class="muted small" id="mapDrivePath">/</p>
+      <div class="map-root-option">
+        <label class="map-root-check" for="mapRoot">
+          <input id="mapRoot" type="checkbox" checked />
+          <span class="map-root-copy">
+            <strong>Map seluruh VPS</strong>
+            <small>Mount root <span class="map-root-path">/</span> agar semua file dan folder tampil</small>
+          </span>
+        </label>
+      </div>
+      <label>Metode
+        <select id="mapMethod">
+          <option value="sshfs">SSHFS-Win (mount VPS langsung, pakai SSH)</option>
+          <option value="rclone">rclone + WinFsp (SFTP)</option>
+          <option value="smb">SMB share (net use)</option>
+        </select>
+      </label>
+      <div class="map-grid">
+        <label>Drive
+          <select id="mapDriveLetter">
+            <option value="G">G:</option><option value="H">H:</option><option value="I">I:</option><option value="J">J:</option><option value="K">K:</option><option value="L">L:</option><option value="M">M:</option><option value="N">N:</option><option value="O">O:</option><option value="P">P:</option><option value="Q">Q:</option><option value="R">R:</option><option value="S">S:</option><option value="T">T:</option><option value="U">U:</option><option value="V">V:</option><option value="W">W:</option><option value="X">X:</option><option value="Y">Y:</option><option value="Z">Z:</option>
+          </select>
+        </label>
+        <label class="mini-check map-mode"><input id="mapNetworkMode" type="checkbox" checked /> Mount sebagai network drive</label>
+      </div>
+      <div id="mapRcloneSection" class="map-section">
+        <div class="map-grid">
+          <label>Host
+            <input id="mapHost" placeholder="103.150.1.2" required />
+          </label>
+          <label>Port
+            <input id="mapPort" type="number" value="22" />
+          </label>
+        </div>
+        <label>Username
+          <input id="mapUser" placeholder="root" autocomplete="username" />
+        </label>
+        <label>Password
+          <input id="mapPassword" type="password" autocomplete="current-password" placeholder="Kosongkan untuk pakai SSH agent / private key" />
+        </label>
+        <div id="mapKeyRow">
+          <label>Private Key Path
+            <input id="mapKey" placeholder="C:\Users\...\.ssh\id_rsa" />
+          </label>
+        </div>
+        <div id="mapCacheRow">
+          <label>Cache mode
+            <select id="mapCacheMode">
+              <option value="full">Full cache</option>
+              <option value="writes">Writes only</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint" id="mapRcloneHint">Host key tidak diverifikasi pada mount. Untuk hanya membaca/menulis aplikasi biasa, pakai Full cache.</p>
+        <p class="hint hidden" id="mapSshfsNote">SSHFS-Win memakai SSH biasa. Jika password dikosongkan, dipakai key <code>%USERPROFILE%\.ssh\id_rsa</code> (tanpa passphrase); key lain &amp; passphrase tidak didukung. Path dipakai apa adanya dari root VPS (mis. <code>/var/www</code>).</p>
+      </div>
+      <div id="mapSmbSection" class="map-section hidden">
+        <label>UNC Share
+          <input id="mapUnc" placeholder="\\110.10.20.30\share\folder" />
+        </label>
+        <label>Username
+          <input id="mapSmbUser" placeholder="DOMAIN\\user atau user" autocomplete="username" />
+        </label>
+        <label>Password
+          <input id="mapSmbPassword" type="password" autocomplete="current-password" />
+        </label>
+        <label class="mini-check"><input id="mapPersistent" type="checkbox" /> Buat persistent saat login</label>
+        <p class="hint">Metode ini memakai Windows <code>net use</code>; VPS harus menyediakan SMB share.</p>
+      </div>
+      <p id="mapHint" class="hint"></p>
+      <div class="modal-actions">
+        <button id="mapCancel" class="ghost">Batal</button>
+        <button id="mapSubmit" class="primary">Map drive</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="connectionsModal" class="modal hidden">
+    <div class="modal-card connections-card">
+      <h3>Koneksi tersimpan</h3>
+      <p class="muted">Klik “Hubungkan” untuk langsung masuk tanpa mengetik ulang.</p>
+      <div id="connectionsList" class="connections-list"></div>
+      <div class="modal-actions">
+        <button id="closeConnections" class="ghost">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cloneModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Clone Git Repository</h3>
+      <label>URL Repository
+        <input id="cloneUrl" placeholder="https://github.com/user/repo.git" autocomplete="off" />
+      </label>
+      <label>Folder Tujuan
+        <div class="field-row" style="margin:0">
+          <div class="value grow" id="cloneDir" style="flex:1">Belum dipilih</div>
+          <button id="clonePick" class="ghost">Pilih</button>
+        </div>
+      </label>
+      <div class="modal-actions">
+        <button id="cloneCancel" class="ghost">Batal</button>
+        <button id="cloneStart" class="primary">Clone</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shortcutModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Panduan Shortcut</h3>
+      <div class="shortcut-list">
+        <div class="shortcut-row"><span class="shortcut-keys">Enter</span><span>Kirim pesan di Chat &amp; Agent</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Shift + Enter</span><span>Baris baru — lanjutkan menulis di bawahnya</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + V</span><span>Tempel gambar ke chat</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + C</span><span>Salin teks yang diblok (seperti Word) — atau klik tombol <strong>Salin</strong> pada pesan</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + S</span><span>Simpan file di editor</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + `</span><span>Buka / tutup panel terminal</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + Shift + 5</span><span>Split terminal</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + B</span><span>Tampilkan / sembunyikan sidebar</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + J</span><span>Tampilkan / sembunyikan panel agent</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + Alt + H</span><span>Buka panduan shortcut ini kapan saja</span></div>
+      </div>
+      <div class="modal-actions">
+        <button id="closeShortcut" class="primary">Mengerti</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/ace/ace.js"></script>
+  <script src="vendor/ace/theme-tomorrow_night.js"></script>
+  <script src="vendor/ace/theme-one_dark.js"></script>
+  <script src="vendor/ace/theme-monokai.js"></script>
+  <script src="vendor/ace/theme-dracula.js"></script>
+  <script src="vendor/ace/theme-nord_dark.js"></script>
+  <script src="vendor/ace/theme-tomorrow_night_blue.js"></script>
+  <script src="vendor/ace/theme-tomorrow.js"></script>
+  <script src="vendor/ace/mode-javascript.js"></script>
+  <script src="vendor/ace/mode-typescript.js"></script>
+  <script src="vendor/ace/mode-python.js"></script>
+  <script src="vendor/ace/mode-html.js"></script>
+  <script src="vendor/ace/mode-css.js"></script>
+  <script src="vendor/ace/mode-json.js"></script>
+  <script src="vendor/ace/mode-markdown.js"></script>
+  <script src="vendor/ace/mode-sh.js"></script>
+  <script src="vendor/ace/mode-sql.js"></script>
+<script src="vendor/ace/mode-mysql.js"></script>
+<script src="vendor/ace/mode-pgsql.js"></script>
+<script src="vendor/ace/mode-sqlserver.js"></script>
+  <script src="vendor/ace/mode-xml.js"></script>
+  <script src="vendor/ace/mode-yaml.js"></script>
+  <script src="vendor/ace/mode-rust.js"></script>
+  <script src="vendor/ace/mode-golang.js"></script>
+  <script src="vendor/ace/mode-php.js"></script>
+  <script src="vendor/ace/mode-ruby.js"></script>
+  <script src="vendor/ace/mode-java.js"></script>
+  <script src="vendor/ace/mode-c_cpp.js"></script>
+  <script src="vendor/ace/mode-csharp.js"></script>
+  <script src="vendor/ace/mode-ini.js"></script>
+  <script src="vendor/ace/ext-searchbox.js"></script>
+  <script src="vendor/ace/ext-language_tools.js"></script>
+  <script src="vendor/ace/snippets/javascript.js"></script>
+  <script src="vendor/ace/snippets/python.js"></script>
+  <script src="vendor/ace/snippets/html.js"></script>
+  <script src="vendor/ace/snippets/css.js"></script>
+  <script src="vendor/xterm/xterm.js"></script>
+  <script src="vendor/xterm/addon-fit.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
