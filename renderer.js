@@ -138,26 +138,28 @@
   }
 
   function updateKeyBadge() {
-    const badge = $('keyBadge');
-    if (S.settings.hasKey) {
-      badge.textContent = 'Key •••• ' + (S.settings.keyHint || '');
-      badge.className = 'badge on';
-    } else {
-      badge.textContent = 'Key belum diisi';
-      badge.className = 'badge off';
-    }
+    const on = S.settings.hasKey;
+    document.querySelectorAll('.keyBadge').forEach((badge) => {
+      badge.textContent = on ? 'Key •••• ' + (S.settings.keyHint || '') : 'Key belum diisi';
+      badge.className = 'keyBadge badge ' + (on ? 'on' : 'off');
+    });
   }
 
   function currentModel() {
     return S.model || (S.models[0] && S.models[0].id) || 'MiniMax-M3';
   }
 
+  function modelSelects() {
+    return [$('modelSelect'), $('modelSelectAgent')].filter(Boolean);
+  }
+
   function setModel(id) {
     if (!id) return;
     S.model = id;
     localStorage.setItem('sahabat.model', id);
-    const sel = $('modelSelect');
-    if ([...sel.options].some((o) => o.value === id)) sel.value = id;
+    for (const sel of modelSelects()) {
+      if ([...sel.options].some((o) => o.value === id)) sel.value = id;
+    }
     $('apiModel').textContent = id;
     renderSnippet();
     updateThinkingAvailability();
@@ -178,23 +180,29 @@
   }
 
   function renderModelOptions() {
-    const sel = $('modelSelect');
-    sel.innerHTML = '';
-    if (!S.models.length) {
-      const opt = document.createElement('option');
-      opt.value = currentModel();
-      opt.textContent = currentModel();
-      sel.appendChild(opt);
-    } else {
+    const sels = modelSelects();
+    for (const sel of sels) sel.innerHTML = '';
+    const buildOptions = (sel) => {
+      if (!S.models.length) {
+        const opt = document.createElement('option');
+        opt.value = currentModel();
+        opt.textContent = currentModel();
+        sel.appendChild(opt);
+        return;
+      }
       for (const m of S.models) {
         const opt = document.createElement('option');
         opt.value = m.id;
         opt.textContent = m.id;
         sel.appendChild(opt);
       }
-      if (!S.models.some((m) => m.id === S.model)) S.model = S.models[0].id;
       sel.value = S.model;
+    };
+    if (S.models.length && !S.models.some((m) => m.id === S.model)) {
+      S.model = S.models[0].id;
+      localStorage.setItem('sahabat.model', S.model);
     }
+    for (const sel of sels) buildOptions(sel);
     $('apiModel').textContent = currentModel();
     renderSnippet();
     updateThinkingAvailability();
@@ -208,6 +216,9 @@
     const target = $('view-' + view);
     if (target) target.classList.remove('hidden');
     $('viewTitle').textContent = VIEW_TITLES[view] || view;
+    $('viewTitle').classList.toggle('hidden', view === 'workspace');
+    const topbar = document.querySelector('.topbar');
+    if (topbar) topbar.classList.toggle('hidden', view === 'workspace');
     const connectionOpen = !$('connectionPane').classList.contains('hidden');
     const showExtensionsPane = view === 'extensions';
     const showWorkspacePane = view === 'workspace';
@@ -2082,6 +2093,8 @@
 
   function renderTermTabs() {
     const box = $('termTabs');
+    const ph = $('termPlaceholder');
+    if (ph) ph.classList.toggle('hidden', S.termTabs.length > 0);
     box.innerHTML = '';
     if (!S.termTabs.length) {
       box.innerHTML = '<span class="term-empty">Belum ada terminal. Klik + untuk terminal lokal; koneksi SSH menambah tab SSH.</span>';
@@ -2146,6 +2159,7 @@
     const made = createXterm(host, true);
     const tab = { uid, kind: 'local', ptyId, shellId: null, sessionId: null, label: label || 'Lokal', host, term: made.term, fit: made.fit };
     made.term.onData((d) => { if (tab.ptyId) api.terminalInput(tab.ptyId, d); });
+    made.term.onResize(({ cols, rows }) => { if (tab.ptyId) api.termResize(tab.ptyId, cols, rows); });
     S.termTabs.push(tab);
     renderTermTabs();
     activateTerminalTab(uid);
@@ -2444,10 +2458,10 @@
     return el;
   }
 
-  function addAgentPending(text) {
+  function addAgentPending() {
     const el = document.createElement('div');
     el.className = 'agent-pending';
-    el.innerHTML = '<span class="spinner"></span><span>' + esc(text || 'Memikirkan…') + '</span>';
+    el.innerHTML = '<span class="arrow-spinner" role="status" aria-label="Memikirkan"><i></i><i></i><i></i><i></i><i></i></span>';
     $('agentLog').appendChild(el);
     agentScrollToEnd('auto');
     return el;
@@ -2523,8 +2537,20 @@
     agentScrollToEnd('auto');
   }
 
+  const THINKING_SPINNER = '<span class="arrow-spinner arrow-spinner--inline" role="status" aria-label="Memikirkan"><i></i><i></i><i></i><i></i><i></i></span>';
+
   function setAgentStatus(text) {
-    $('agentStatus').textContent = text || '';
+    const el = $('agentStatus');
+    if (!text) { el.innerHTML = ''; return; }
+    if (/^Memikirkan/i.test(text)) { el.innerHTML = THINKING_SPINNER; return; }
+    el.textContent = text;
+  }
+
+  function setChatStatus(text) {
+    const el = $('chatStatus');
+    if (!text) { el.innerHTML = ''; return; }
+    if (/^(Menghubungi|Mengetik)/i.test(text)) { el.innerHTML = THINKING_SPINNER; return; }
+    el.textContent = text;
   }
 
   async function sendAgent() {
@@ -2787,7 +2813,7 @@
     persistChat();
     $('chat').innerHTML = '';
     renderAttachments();
-    $('chatStatus').textContent = '';
+    setChatStatus('');
     $('chatInput').focus();
     toast('Chat baru');
   }
@@ -2847,7 +2873,7 @@
     S.busy = true;
     $('sendChat').classList.add('hidden');
     $('stopChat').classList.remove('hidden');
-    $('chatStatus').textContent = 'Menghubungi model...';
+    setChatStatus('Menghubungi model...');
     const contentParts = [];
     if (text) contentParts.push({ type: 'text', text });
     for (const img of images) contentParts.push({ type: 'image_url', image_url: { url: img.dataUrl } });
@@ -2863,16 +2889,16 @@
       full += d.delta || '';
       body.innerHTML = renderChatMarkdown(full);
       $('chat').scrollTop = $('chat').scrollHeight;
-      $('chatStatus').textContent = 'Mengetik...';
+      setChatStatus('Mengetik...');
     });
     const offDone = api.onDone((d) => {
       if (d.requestId !== requestId) return;
       cleanup();
-      if (d.aborted) $('chatStatus').textContent = 'Dihentikan';
+      if (d.aborted) setChatStatus('Dihentikan');
       else {
         S.chat.push({ role: 'assistant', content: full });
         persistChat();
-        $('chatStatus').textContent = '';
+        setChatStatus('');
       }
     });
     const offErr = api.onError((d) => {
@@ -2880,7 +2906,7 @@
       cleanup();
       body.closest('.message').classList.add('error');
       body.textContent = d.message || 'Terjadi kesalahan.';
-      $('chatStatus').textContent = '';
+      setChatStatus('');
     });
     function cleanup() {
       offChunk(); offDone(); offErr();
@@ -2894,7 +2920,7 @@
       cleanup();
       body.closest('.message').classList.add('error');
       body.textContent = (res && res.error && res.error.message) || 'Gagal mengirim.';
-      $('chatStatus').textContent = '';
+      setChatStatus('');
     }
   }
 
@@ -3056,6 +3082,38 @@
     if (S.settings.hasKey) loadModels();
   }
 
+  let keyDetectTimer = null;
+  function autoDetectKey() {
+    clearTimeout(keyDetectTimer);
+    keyDetectTimer = setTimeout(async () => {
+      const key = $('apiKeyInput').value.trim();
+      if (key.length < 8) return;
+      setModelAccessInfo('API key dimasukkan — mendeteksi model & paket…');
+      try {
+        const payload = {
+          baseUrl: $('baseUrlInput').value.trim(),
+          modelAccessMode: $('modelAccessModeSelect').value || 'auto',
+          modelAccessAll: $('modelAccessAllCheck').checked
+        };
+        if (key) payload.apiKey = key;
+        S.settings = await api.saveSettings(payload);
+        updateKeyBadge();
+        const res = await api.listModels();
+        if (res && res.access) renderModelAccessInfo(res.access);
+        if (res && res.ok) {
+          S.models = res.models || [];
+          S.modelAccessNote = res.access && res.access.note ? res.access.note : S.modelAccessNote;
+          renderModelOptions();
+          renderModelList();
+        } else if (res && res.error) {
+          setModelAccessInfo('Gagal memuat model: ' + res.error);
+        }
+      } catch (err) {
+        setModelAccessInfo('Gagal mendeteksi: ' + (err && err.message ? err.message : String(err)));
+      }
+    }, 700);
+  }
+
   async function detectModelAccess() {
     setModelAccessInfo('Mendeteksi model yang diizinkan paket Anda…');
     const res = await api.listModels();
@@ -3202,7 +3260,7 @@
   function bind() {
     document.querySelectorAll('.act[data-view]').forEach((b) => b.addEventListener('click', () => switchView(b.dataset.view)));
     $('actSettings').addEventListener('click', openSettings);
-    $('openSettings').addEventListener('click', openSettings);
+    document.querySelectorAll('.openSettings').forEach((btn) => btn.addEventListener('click', openSettings));
     $('cancelSettings').addEventListener('click', () => $('settingsModal').classList.add('hidden'));
     $('saveSettings').addEventListener('click', saveSettings);
     $('modelAccessModeSelect').addEventListener('change', () => {
@@ -3213,6 +3271,7 @@
       }
     });
     $('detectModels').addEventListener('click', detectModelAccess);
+    $('apiKeyInput').addEventListener('input', autoDetectKey);
     $('resetBlockedModels').addEventListener('click', async () => {
       try { S.settings = await api.resetBlockedModels(); } catch { /* abaikan */ }
       toast('Model yang sebelumnya ditolak kini ditampilkan lagi. Deteksi ulang untuk memuatnya.');
@@ -3360,7 +3419,7 @@
     });
     $('checkUpdate').addEventListener('click', () => checkUpdates(true));
     $('updateBadge').addEventListener('click', openUpdateBadge);
-    $('modelSelect').addEventListener('change', (e) => setModel(e.target.value));
+    modelSelects().forEach((sel) => sel.addEventListener('change', (e) => setModel(e.target.value)));
     $('refreshModels').addEventListener('click', loadModels);
     $('modelSearch').addEventListener('input', renderModelList);
 

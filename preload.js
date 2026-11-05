@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld('sahabat', {
   mkdir: (path) => ipcRenderer.invoke('fs:mkdir', path),
   removeFile: (path) => ipcRenderer.invoke('fs:remove', path),
 
+  termResize: (id, cols, rows) => ipcRenderer.invoke('term:resize', { id, cols, rows }),
   startTerminal: (payload) => ipcRenderer.invoke('term:start', payload),
   terminalInput: (id, data) => ipcRenderer.invoke('term:input', { id, data }),
   stopTerminal: (id) => ipcRenderer.invoke('term:stop', id),

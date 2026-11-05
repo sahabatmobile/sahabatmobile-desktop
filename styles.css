@@ -486,6 +486,21 @@ button.block {
   cursor: pointer;
 }
 
+.keyBadge {
+  font-size: 10.5px;
+  padding: 4px 9px;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-small {
+  font-size: 10.5px;
+  padding: 4px 8px;
+  max-width: 220px;
+  border-radius: 8px;
+}
+
 .badge.update:hover {
   border-color: #f59e0b;
 }
@@ -2175,6 +2190,28 @@ body.resizing {
   flex: 1 1 auto;
   min-height: 0;
 }
+.term-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  user-select: none;
+}
+.term-placeholder-title {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  padding-left: 0.4em;
+  color: rgba(148, 163, 184, 0.16);
+}
+.term-placeholder-sub {
+  font-size: 12px;
+  color: rgba(148, 163, 184, 0.35);
+}
 .term-host-tab {
   position: absolute;
   inset: 0;
@@ -2291,6 +2328,38 @@ body.resizing {
   color: var(--muted);
   font-size: 12px;
   padding: 4px 2px;
+}
+
+/* Spinner ala OpenCode: lampu berjalan kiri-kanan */
+.arrow-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 2px;
+}
+.arrow-spinner i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.22;
+  animation: arrow-sweep 1.15s ease-in-out infinite alternate;
+}
+.arrow-spinner i:nth-child(1) { animation-delay: 0s; }
+.arrow-spinner i:nth-child(2) { animation-delay: 0.09s; }
+.arrow-spinner i:nth-child(3) { animation-delay: 0.18s; }
+.arrow-spinner i:nth-child(4) { animation-delay: 0.27s; }
+.arrow-spinner i:nth-child(5) { animation-delay: 0.36s; }
+.arrow-spinner--inline {
+  padding: 2px 6px;
+}
+.arrow-spinner--inline i {
+  width: 5px;
+  height: 5px;
+}
+@keyframes arrow-sweep {
+  0%, 100% { opacity: 0.18; transform: translateX(-3px) scale(0.75); }
+  50% { opacity: 1; transform: translateX(3px) scale(1.2); }
 }
 
 .agent-thinking {

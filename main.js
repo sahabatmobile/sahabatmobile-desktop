@@ -265,16 +265,27 @@ function stripReasoningFromMessages(messages) {
   return (Array.isArray(messages) ? messages : []).map(stripReasoningFields);
 }
 
-// ---------- Auto-detection paket API key (Hemat / Coding / MiniMax / Pro vs PAYG) ----------
+// ---------- Auto-detection paket API key (vs PAYG) ----------
+// Peta model ditanggung paket, disalin dari model_config tabel `packages`
+// (gabungan regular + highspeed). Sumber: database sahabatmobile.com.
 const PACKAGE_MODELS = {
   hemat: ['mimo-v2.5', 'mimo-v2.5-pro', 'mimo-v2.5-pro-ultraspeed', 'mimo-v2.6-flash', 'mimo-v2.6-pro', 'mimo-v2.5-asr', 'mimo-v2.5-tts', 'mimo-v2.5-tts-voiceclone', 'mimo-v2.5-tts-voicedesign'],
   coding: ['mimo-v2.5', 'mimo-v2.5-pro', 'deepseek-v3.2', 'deepseek-v4-flash', 'qwen3.7-flash'],
-  minimax: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5', 'MiniMax-M2.1', 'MiniMax-M2'],
+  minimax: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5', 'MiniMax-M2.1', 'MiniMax-M2', 'M2.7-highspeed', 'M2.5-highspeed', 'M2.1-highspeed'],
   pro: [
-    'mimo-v2.5', 'mimo-v2.5-pro', 'deepseek-v3.2', 'deepseek-v4-flash', 'qwen3.7-flash',
-    'MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5', 'MiniMax-M2.1',
-    'deepseek-v4-pro', 'google/gemini-2.5-flash', 'claude-3-haiku',
+    'mimo-v2.5', 'mimo-v2.5-pro', 'deepseek-v4-pro', 'deepseek-v3.2',
+    'claude-3-haiku', 'claude-haiku-4.5', 'gpt-4o-mini', 'gpt-4.1-mini',
+    'gemini-2.5-flash', 'qwen3.7-flash', 'llama-3.3-70b', 'qwen3-32b',
   ],
+  bisnis: null, // null = semua model (model_config regular ["*"])
+  claude_starter: ['claude-haiku-5-5'],
+  claude_regular: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5'],
+  claude_dev: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5', 'claude-opus-4-8'],
+  claude_studio: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5', 'claude-opus-4-8', 'claude-fable-5-1'],
+  claude_pro: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5', 'claude-opus-4-8', 'claude-fable-5-1'],
+  asian_starter: ['deepseek/deepseek-flash'],
+  asian_coder: ['hy4-preview', 'glm-5.3'],
+  longcat: ['LongCat-2.5-Preview', 'LongCat-2.0'],
 };
 
 const PACKAGE_NAMES = {
@@ -282,9 +293,19 @@ const PACKAGE_NAMES = {
   coding: 'Paket Coding',
   minimax: 'Paket MiniMax',
   pro: 'Paket Pro',
+  bisnis: 'Paket Bisnis',
+  claude_starter: 'Claude Starter',
+  claude_regular: 'Claude Regular',
+  claude_dev: 'Claude Dev',
+  claude_studio: 'Claude Studio',
+  claude_pro: 'Claude Pro',
+  asian_starter: 'Asian AI Starter',
+  asian_coder: 'Asian AI Coder',
+  longcat: 'LongCat',
 };
 
-const PACKAGE_UNION = Array.from(new Set([].concat(...Object.values(PACKAGE_MODELS))));
+const ALL_PACKAGE_MODELS = Array.from(new Set([].concat(...Object.values(PACKAGE_MODELS).filter(Boolean))));
+const PACKAGE_UNION = ALL_PACKAGE_MODELS;
 
 // Deteksi 1: awalan key (sk-hemat-..., sk-minimax-..., dst.)
 function packageFromKey(key) {
@@ -300,11 +321,41 @@ function packageFromKey(key) {
 function packageFromText(text) {
   const t = String(text || '').toLowerCase();
   if (!t) return null;
+  if (t.includes('bisnis')) return 'bisnis';
   if (t.includes('hemat')) return 'hemat';
   if (t.includes('coding')) return 'coding';
   if (t.includes('minimax')) return 'minimax';
+  if (t.includes('longcat')) return 'longcat';
+  if (t.includes('asian')) return /coder/.test(t) ? 'asian_coder' : 'asian_starter';
+  if (t.includes('claude')) {
+    if (t.includes('starter')) return 'claude_starter';
+    if (t.includes('regular')) return 'claude_regular';
+    if (t.includes('dev')) return 'claude_dev';
+    if (t.includes('studio')) return 'claude_studio';
+    if (/\bpro\b/.test(t)) return 'claude_pro';
+    return 'claude_regular';
+  }
   if (/\bpro\b/.test(t)) return 'pro';
   return null;
+}
+
+// Tanya akun ke gateway (/me/status): nama paket persis + status PAYG.
+async function fetchAccountStatus() {
+  try {
+    const res = await fetch(getBaseUrl() + '/me/status', { headers: authHeaders(storedKey) });
+    const text = await res.text();
+    if (!res.ok) return { ok: false, status: res.status };
+    const parsed = JSON.parse(text);
+    return {
+      ok: true,
+      ada_paket: parsed.ada_paket === true,
+      nama_paket: typeof parsed.nama_paket === 'string' ? parsed.nama_paket : null,
+      saldo_kredit: typeof parsed.saldo_kredit === 'number' ? parsed.saldo_kredit : null,
+      paket_sampai: typeof parsed.paket_sampai === 'string' ? parsed.paket_sampai : null,
+    };
+  } catch {
+    return { ok: false };
+  }
 }
 
 // Deteksi 2: probe minimal ke model eksklusif paket.
@@ -341,21 +392,56 @@ async function detectModelAccess() {
   const mode = s.modelAccessMode || 'auto';
   if (mode !== 'auto') {
     if (mode === 'payg') return { detected: true, source: 'mode', allowed: null, plan: 'Pay-as-you-go', note: 'Mode manual: Pay-as-you-go - semua model ditampilkan (biaya per pemakaian).' };
-    if (PACKAGE_MODELS[mode]) return { detected: true, source: 'mode', allowed: [...PACKAGE_MODELS[mode]], plan: PACKAGE_NAMES[mode], note: 'Mode manual: ' + PACKAGE_NAMES[mode] + ' - hanya ' + PACKAGE_MODELS[mode].length + ' model yang ditanggung paket.' };
+    if (Object.prototype.hasOwnProperty.call(PACKAGE_MODELS, mode)) {
+      const list = PACKAGE_MODELS[mode];
+      if (list === null) return { detected: true, source: 'mode', allowed: null, plan: PACKAGE_NAMES[mode], note: 'Mode manual: ' + PACKAGE_NAMES[mode] + ' - semua model ditanggung paket.' };
+      return { detected: true, source: 'mode', allowed: [...list], plan: PACKAGE_NAMES[mode], note: 'Mode manual: ' + PACKAGE_NAMES[mode] + ' - hanya ' + list.length + ' model yang ditanggung paket.' };
+    }
   }
   if (!storedKey) return { detected: false, note: 'API key belum diisi.', allowed: null };
   // Lapis 1: awalan key.
   const byPrefix = packageFromKey(storedKey);
   if (byPrefix) {
+    const list = PACKAGE_MODELS[byPrefix];
     return {
-      detected: true, source: 'prefix', allowed: [...PACKAGE_MODELS[byPrefix]], plan: PACKAGE_NAMES[byPrefix],
+      detected: true, source: 'prefix',
+      allowed: list ? [...list] : null,
+      plan: PACKAGE_NAMES[byPrefix],
       note: 'API key terdeteksi: ' + PACKAGE_NAMES[byPrefix] + ' - model di luar daftar paket tidak ditampilkan agar saldo wallet tidak terpotong.'
     };
   }
-  // Lapis 2: cache.
+  // Lapis 2: tanyakan akun ke gateway (/me/status) — nama paket persis dari database.
+  const me = await fetchAccountStatus();
+  if (me && me.ok) {
+    if (!me.ada_paket) {
+      return { detected: true, source: 'account', allowed: null, plan: 'Pay-as-you-go', note: 'API key terdeteksi: Pay-as-you-go (tanpa paket) - semua model boleh, biaya per pemakaian.' };
+    }
+    const planKey = packageFromText(me.nama_paket || '');
+    if (planKey && Object.prototype.hasOwnProperty.call(PACKAGE_MODELS, planKey)) {
+      const list = PACKAGE_MODELS[planKey];
+      const result = {
+        detected: true, source: 'account',
+        allowed: list ? [...list] : null,
+        plan: me.nama_paket || PACKAGE_NAMES[planKey],
+        note: list
+          ? 'API key terdeteksi: ' + (me.nama_paket || PACKAGE_NAMES[planKey]) + ' - hanya ' + list.length + ' model yang ditanggung paket (model lain ditolak gateway atau memotong saldo wallet).'
+          : 'API key terdeteksi: ' + (me.nama_paket || PACKAGE_NAMES[planKey]) + ' - semua model ditanggung paket.'
+      };
+      accessCache = { at: Date.now(), key: storedKey, value: result };
+      return result;
+    }
+    const result = {
+      detected: true, source: 'account', allowed: null,
+      plan: me.nama_paket || 'Paket aktif',
+      note: 'Paket terdeteksi: ' + (me.nama_paket || 'Paket aktif') + ' - daftar model paket ini belum dikenal aplikasi, menampilkan semua model. Gateway tetap membatasi model eksklusif.'
+    };
+    accessCache = { at: Date.now(), key: storedKey, value: result };
+    return result;
+  }
+  // Lapis 3: cache.
   const now = Date.now();
   if (accessCache.value && accessCache.key === storedKey && now - accessCache.at < 15 * 60 * 1000) return accessCache.value;
-  // Lapis 3: probe ke server.
+  // Lapis 4: probe ke server.
   const probe = await probePackage();
   let result;
   if (probe.hasPackage === false) {
@@ -363,10 +449,11 @@ async function detectModelAccess() {
       detected: true, source: 'probe', allowed: null, plan: 'Pay-as-you-go',
       note: 'API key terdeteksi: Pay-as-you-go (tanpa paket) - semua model boleh, biaya per pemakaian.'
     };
-  } else if (probe.hasPackage === true && probe.plan) {
+  } else   if (probe.hasPackage === true && probe.plan) {
+    const list = PACKAGE_MODELS[probe.plan];
     result = {
-      detected: true, source: 'probe', allowed: [...PACKAGE_MODELS[probe.plan]], plan: PACKAGE_NAMES[probe.plan],
-      note: 'API key terdeteksi: ' + PACKAGE_NAMES[probe.plan] + ' - hanya model yang ditanggung paket yang ditampilkan.'
+      detected: true, source: 'probe', allowed: list ? [...list] : null, plan: PACKAGE_NAMES[probe.plan] || 'Paket aktif',
+      note: 'API key terdeteksi: ' + (PACKAGE_NAMES[probe.plan] || 'Paket aktif') + ' - hanya model yang ditanggung paket yang ditampilkan.'
     };
   } else if (probe.hasPackage === true) {
     result = {
@@ -382,6 +469,31 @@ async function detectModelAccess() {
   // Jangan cache hasil yang tidak pasti (deteksi gagal) agar bisa dicoba ulang.
   if (result.detected !== false) accessCache = { at: now, key: storedKey, value: result };
   return result;
+}
+
+// Penegakan rule API key: model harus sesuai paket (di luar paket ditolak,
+// kecuali "Tampilkan semua model" aktif atau hasil deteksi PAYG/tidak pasti).
+async function enforcePlanModel(model) {
+  const m = String(model || '').trim();
+  if (!m) return { ok: false, error: { message: 'Model belum dipilih.' } };
+  try {
+    const s = readSettings();
+    if (s.modelAccessAll) return { ok: true };
+    const access = await detectModelAccess();
+    if (!access || !access.allowed) return { ok: true };
+    const allow = new Set(access.allowed.map((id) => String(id).toLowerCase()));
+    if (allow.has(m.toLowerCase())) return { ok: true, access };
+    return {
+      ok: false,
+      error: {
+        message: 'Model "' + m + '" tidak termasuk ' + (access.plan || 'paket Anda') + '. Model yang boleh: ' + access.allowed.join(', ') + '.',
+        plan: access.plan || null,
+        allowed: access.allowed
+      }
+    };
+  } catch {
+    return { ok: true };
+  }
 }
 
 function blockedModelIds() {
@@ -2499,6 +2611,15 @@ ipcMain.handle('models:list', async () => {
       if (access.allowed) {
         const allow = new Set(access.allowed.map((id) => String(id).toLowerCase()));
         shown = shown.filter((m) => allow.has(String(m.id).toLowerCase()));
+        // Sertakan model paket yang tidak dikembalikan gateway supaya tetap bisa dipilih.
+        const present = new Set(shown.map((m) => String(m.id).toLowerCase()));
+        for (const id of access.allowed) {
+          const key = String(id).toLowerCase();
+          if (!present.has(key)) {
+            shown.push({ id, name: id, owner: '', thinking: modelSupportsThinking(id) });
+          }
+        }
+        shown.sort((a, b) => a.id.localeCompare(b.id));
       }
       if (blocked.length) shown = shown.filter((m) => !blocked.includes(String(m.id)));
     } else {
@@ -2519,6 +2640,8 @@ ipcMain.handle('chat:start', async (event, payload) => {
   if (!storedKey) {
     return { ok: false, error: { message: 'API key belum diisi.' } };
   }
+  const planCheck = await enforcePlanModel(payload.model);
+  if (!planCheck.ok) return { ok: false, error: planCheck.error };
   const controller = new AbortController();
   controllers.set(requestId, controller);
   const body = {
@@ -2637,6 +2760,8 @@ let chatSeq = 0;
 ipcMain.handle('chat:complete', async (event, payload) => {
   if (!storedKey) return { ok: false, error: { message: 'API key belum diisi.' } };
   const model = String(payload.model || '');
+  const planCheck = await enforcePlanModel(model);
+  if (!planCheck.ok) return { ok: false, error: planCheck.error };
   const capable = modelSupportsThinking(model);
   const body = {
     model,
@@ -2958,10 +3083,30 @@ ipcMain.handle('entry:download', async (event, payload) => {
   }
 });
 
+let ptyLib = null;
+try { ptyLib = require('node-pty'); } catch { ptyLib = null; }
+
 ipcMain.handle('term:start', async (event, payload) => {
   const id = 't' + (++termSeq);
   const sh = localShell();
   const cwd = payload && payload.cwd ? payload.cwd : (workspaceRoot || os.homedir());
+  if (ptyLib) {
+    try {
+      const proc = ptyLib.spawn(sh.file, sh.args, {
+        name: 'xterm-256color', cols: 120, rows: 30, cwd, env: process.env,
+      });
+      proc.onData((d) => send('term:data', { id, data: d }));
+      proc.onExit(({ exitCode }) => {
+        terminals.delete(id);
+        send('term:exit', { id, code: exitCode });
+      });
+      terminals.set(id, { pty: proc });
+      return { ok: true, id, cwd, shell: sh.file };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  }
+  // Fallback bila node-pty tidak tersedia: pipe tanpa PTY (tanpa echo/prompt).
   let child;
   try {
     child = spawn(sh.file, sh.args, { cwd, env: process.env, windowsHide: true });
@@ -2975,20 +3120,29 @@ ipcMain.handle('term:start', async (event, payload) => {
     send('term:exit', { id, code });
   });
   child.on('error', (err) => send('term:data', { id, data: '\r\n[error] ' + err.message + '\r\n' }));
-  terminals.set(id, child);
+  terminals.set(id, { child });
   return { ok: true, id, cwd, shell: sh.file };
 });
 
+ipcMain.handle('term:resize', (event, payload) => {
+  const term = terminals.get(payload.id);
+  if (term && term.pty) {
+    try { term.pty.resize(Math.max(2, payload.cols | 0), Math.max(1, payload.rows | 0)); } catch { /* abaikan */ }
+  }
+  return { ok: true };
+});
+
 ipcMain.handle('term:input', (event, payload) => {
-  const child = terminals.get(payload.id);
-  if (child && child.stdin.writable) child.stdin.write(String(payload.data || ''));
-  return { ok: Boolean(child) };
+  const term = terminals.get(payload.id);
+  if (term && term.pty) { term.pty.write(String(payload.data || '')); return { ok: true }; }
+  if (term && term.child && term.child.stdin.writable) term.child.stdin.write(String(payload.data || ''));
+  return { ok: Boolean(term) };
 });
 
 ipcMain.handle('term:stop', (event, id) => {
-  const child = terminals.get(id);
-  if (child) { try { child.kill(); } catch {} }
-  terminals.delete(id);
+  const term = terminals.get(id);
+  if (term && term.pty) { try { term.pty.kill(); } catch {} terminals.delete(id); return { ok: true }; }
+  if (term && term.child) { try { term.child.kill(); } catch {} terminals.delete(id); return { ok: true }; }
   return { ok: true };
 });
 

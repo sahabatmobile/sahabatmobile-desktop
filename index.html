@@ -156,10 +156,7 @@
       <header class="topbar">
         <div class="title" id="viewTitle">Chat</div>
         <div class="controls">
-          <select id="modelSelect" title="Pilih model"></select>
           <button id="updateBadge" class="badge update hidden" title="Pembaruan tersedia">Update</button>
-          <span id="keyBadge" class="badge off">Key belum diisi</span>
-          <button id="openSettings" class="ghost small">Pengaturan</button>
         </div>
       </header>
 
@@ -171,7 +168,10 @@
           <div class="actions">
             <button id="attachChat" class="ghost small" title="Lampirkan gambar (atau tempel / seret ke sini)">Gambar</button>
             <input id="chatFiles" type="file" accept="image/*" multiple class="file-hidden" />
+            <select id="modelSelect" class="select-small" title="Pilih model"></select>
             <button class="ghost small shortcut-help-btn" title="Panduan shortcut (Enter kirim, Shift+Enter baris baru)">⌨ Shortcut</button>
+            <span class="keyBadge badge off">Key belum diisi</span>
+            <button class="openSettings ghost small" type="button">Pengaturan</button>
             <span id="chatStatus" class="status"></span>
             <button id="newChat" class="ghost small" title="Mulai percakapan baru">Chat baru</button>
             <button id="stopChat" class="ghost small hidden">Stop</button>
@@ -215,7 +215,12 @@
                 </div>
               </div>
               <div id="termTabs" class="term-tabs"></div>
-              <div id="termHosts" class="term-hosts"></div>
+              <div id="termHosts" class="term-hosts">
+                <div id="termPlaceholder" class="term-placeholder">
+                  <span class="term-placeholder-title">TERMINAL</span>
+                  <span class="term-placeholder-sub">Klik + untuk membuka terminal</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -253,7 +258,10 @@
               <textarea id="agentInput" rows="3" placeholder="Minta agen memperbaiki atau membuat project di explorer aktif... (Enter kirim, Shift+Enter baris baru)"></textarea>
               <div class="actions">
                 <label class="mini-check"><input type="checkbox" id="allowCmd" /> izinkan perintah</label>
+                <select id="modelSelectAgent" class="select-small" title="Pilih model"></select>
                 <button class="ghost small shortcut-help-btn" title="Panduan shortcut">⌨ Shortcut</button>
+                <span class="keyBadge badge off">Key belum diisi</span>
+                <button class="openSettings ghost small" type="button">Pengaturan</button>
                 <span id="agentStatus" class="status small"></span>
                 <button id="agentStop" class="ghost small hidden" type="button">Stop</button>
                 <button id="agentSend" class="primary small">Kirim</button>
