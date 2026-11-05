@@ -267,7 +267,7 @@ function stripReasoningFromMessages(messages) {
 
 // ---------- Auto-detection paket API key (Hemat / Coding / MiniMax / Pro vs PAYG) ----------
 const PACKAGE_MODELS = {
-  hemat: ['mimo-v2.5'],
+  hemat: ['mimo-v2.5', 'mimo-v2.5-pro', 'mimo-v2.5-pro-ultraspeed', 'mimo-v2.6-flash', 'mimo-v2.6-pro', 'mimo-v2.5-asr', 'mimo-v2.5-tts', 'mimo-v2.5-tts-voiceclone', 'mimo-v2.5-tts-voicedesign'],
   coding: ['mimo-v2.5', 'mimo-v2.5-pro', 'deepseek-v3.2', 'deepseek-v4-flash', 'qwen3.7-flash'],
   minimax: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5', 'MiniMax-M2.1', 'MiniMax-M2'],
   pro: [
