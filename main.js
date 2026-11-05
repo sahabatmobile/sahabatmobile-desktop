@@ -11,7 +11,7 @@ const AdmZip = require('adm-zip');
 const dbEngine = require('./db');
 
 const DEFAULT_BASE_URL = 'https://www.sahabatmobile.com/api/v1';
-const DEFAULT_UPDATE_FEED = 'https://raw.githubusercontent.com/sahabatmobile/models.dev/dev/desktop/update.json';
+const DEFAULT_UPDATE_FEED = 'https://raw.githubusercontent.com/sahabatmobile/sahabatmobile-desktop/main/update.json';
 const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'out', '.next', '.cache', '__pycache__']);
 const MAX_READ = 5 * 1024 * 1024;
 const posix = path.posix;
