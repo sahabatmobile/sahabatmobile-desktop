@@ -3,6 +3,7 @@
 
   const api = window.sahabat;
   const VIEW_TITLES = { chat: 'Chat', workspace: 'Workspace Developer', models: 'Model', api: 'API & Snippet', extensions: 'Extensions' };
+  const RING_DOTS = '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>';
   const EXT_MODES = {};
   const MODE_MAP = {
     js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript',
@@ -66,7 +67,7 @@
     settings: { baseUrl: 'https://www.sahabatmobile.com/api/v1', hasKey: false, keyHint: '' },
     models: [],
     model: localStorage.getItem('sahabat.model') || '',
-    view: 'chat',
+    view: localStorage.getItem('sahabat.view') || 'chat',
     chat: [],
     attachments: [],
     update: null,
@@ -85,7 +86,7 @@
     tabs: [],
     active: null,
 
-    agent: { messages: [], busy: false },
+    agent: { messages: [], busy: false, history: [] },
     snippet: 'curl',
     cloneDir: null,
     mapTarget: null,
@@ -238,6 +239,7 @@
 
   function switchView(view) {
     S.view = view;
+    try { localStorage.setItem('sahabat.view', view); } catch { /* abaikan */ }
     document.querySelectorAll('.act[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
     document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
     const target = $('view-' + view);
@@ -2731,13 +2733,200 @@
     const empty = $('agentLog').querySelector('.agent-empty');
     if (empty) empty.remove();
     const el = document.createElement('div');
-    el.className = 'agent-item ' + (cls || '');
-    el.innerHTML = html;
+    const isUser = cls === 'user' && /^\s*<div class="agent-user"/.test(html);
+    const isAi = cls === 'ai' && /^\s*<div class="agent-ai/.test(html);
+    if (isUser) {
+      el.className = 'agent-item user';
+      el.innerHTML = '<div class="agent-item-header"><span class="agent-avatar">You</span><span class="agent-username">Anda</span></div><div class="agent-item-body">' + html + '</div>';
+    } else if (isAi) {
+      el.className = 'agent-item ai';
+      el.innerHTML = '<div class="agent-item-header"><span class="agent-avatar agent-avatar-ai">AI</span><span class="agent-username">AI</span></div><div class="agent-item-body">' + html + '</div>';
+    } else {
+      el.className = cls || '';
+      el.innerHTML = html;
+    }
     const log = $('agentLog');
     log.appendChild(el);
     trimAgentLog();
     agentScrollToEnd('auto');
     return el;
+  }
+
+  // ---------- Agent: riwayat tugas, cari & export ----------
+  const AGENT_HISTORY_STORE = 'sahabat.agent.history.v1';
+
+  function loadAgentHistory() {
+    try {
+      const raw = localStorage.getItem(AGENT_HISTORY_STORE);
+      const arr = raw ? JSON.parse(raw) : [];
+      S.agent.history = Array.isArray(arr) ? arr : [];
+    } catch { S.agent.history = []; }
+  }
+
+  function saveAgentHistory() {
+    try { localStorage.setItem(AGENT_HISTORY_STORE, JSON.stringify(S.agent.history.slice(-20))); } catch { /* abaikan */ }
+  }
+
+  function agentContentText(content) {
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+      return content.map((p) => (p && p.type === 'text' && p.text) ? p.text : '').join(' ');
+    }
+    return '';
+  }
+
+  function agentHistoryTitle(messages) {
+    const first = (messages || []).find((m) => m.role === 'user');
+    const text = agentContentText(first && first.content);
+    return String(text || 'Tugas agent').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Tugas agent';
+  }
+
+  function saveCurrentAgentToHistory() {
+    const msgs = (S.agent.messages || []).filter((m) => m.role !== 'system');
+    if (!msgs.length) return;
+    S.agent.history.push({
+      id: 'agt-' + Date.now(),
+      title: agentHistoryTitle(msgs),
+      ts: Date.now(),
+      target: S.target.type,
+      messages: msgs.slice(-80)
+    });
+    S.agent.history = S.agent.history.slice(-20);
+    saveAgentHistory();
+  }
+
+  function agentEmptyState() {
+    return '<div class="agent-empty">' +
+      '<div class="hero-logo" style="width:46px;height:46px;border-radius:13px;">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;color:#fff;"><path d="M9.5 2a7.5 7.5 0 0 0-5.6 12.6l-.9 4.4 4.4-.9A7.5 7.5 0 1 0 9.5 2z"/></svg>' +
+      '</div>' +
+      '<div class="agent-empty-title">Agent</div>' +
+      '<p>Memahami tugas kompleks, memperbaiki bug, dan membuat project baru.</p>' +
+      '<ul>' +
+        '<li>Membaca dan menulis file di explorer aktif</li>' +
+        '<li>Menjalankan perintah (dengan konfirmasi)</li>' +
+        '<li>Bekerja di folder lokal, SSH/SFTP, atau FTP</li>' +
+      '</ul>' +
+      '<div class="agent-quick">' +
+        '<button class="chip-action" data-agent-prompt="Jelaskan struktur project ini">Jelaskan struktur project</button>' +
+        '<button class="chip-action" data-agent-prompt="Cari bug atau masalah di kode saya">Cari bug di kode</button>' +
+        '<button class="chip-action" data-agent-prompt="Buat file README.md yang informatif">Buat README.md</button>' +
+        '<button class="chip-action" data-agent-prompt="Jalankan perintah untuk memulai development server">Jalankan dev server</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function resetAgentLog() {
+    $('agentLog').innerHTML = agentEmptyState();
+  }
+
+  function newAgentTask() {
+    if (S.agent.busy) { toast('Tunggu agent selesai dulu.'); return; }
+    saveCurrentAgentToHistory();
+    S.agent.messages = [];
+    resetAgentLog();
+    $('agentInput').value = '';
+    $('agentInput').focus();
+    toast('Tugas baru dimulai');
+  }
+
+  function openAgentHistory() {
+    const list = $('agentHistoryList');
+    const hist = S.agent.history || [];
+    if (!hist.length) {
+      list.innerHTML = '<div class="agent-history-empty">Belum ada riwayat tugas.</div>';
+    } else {
+      list.innerHTML = '';
+      for (const item of hist.slice().reverse()) {
+        const d = new Date(item.ts);
+        const meta = d.toLocaleString('id-ID') + ' · ' + (item.messages || []).length + ' pesan';
+        const el = document.createElement('div');
+        el.className = 'agent-history-item';
+        el.innerHTML = '<span class="agent-history-title">' + esc(item.title) + '</span><span class="agent-history-meta">' + esc(meta) + '</span>';
+        el.addEventListener('click', () => loadAgentHistoryItem(item));
+        list.appendChild(el);
+      }
+    }
+    $('agentHistoryModal').classList.remove('hidden');
+  }
+
+  function loadAgentHistoryItem(item) {
+    if (S.agent.busy) { toast('Tunggu agent selesai dulu.'); return; }
+    saveCurrentAgentToHistory();
+    S.agent.messages = (item.messages || []).slice();
+    $('agentLog').innerHTML = '';
+    for (const m of S.agent.messages) {
+      if (m.role === 'user') agentLog('<div class="agent-user">' + esc(agentContentText(m.content)) + '</div>', 'user');
+      else if (m.role === 'assistant') agentLog('<div class="agent-ai markdown">' + renderChatMarkdown(agentContentText(m.content)) + '</div>', 'ai');
+      else if (m.role === 'tool') agentLog('<div class="agent-note">Tool: ' + esc(agentContentText(m.content).slice(0, 500)) + '</div>', 'tool');
+    }
+    $('agentHistoryModal').classList.add('hidden');
+    agentScrollToEnd('auto');
+    toast('Riwayat tugas dimuat');
+  }
+
+  function openAgentSearch() {
+    $('agentSearchInput').value = '';
+    $('agentSearchResults').innerHTML = '<div class="agent-search-empty">Ketik kata kunci untuk mencari di chat ini.</div>';
+    $('agentSearchModal').classList.remove('hidden');
+    setTimeout(() => $('agentSearchInput').focus(), 50);
+  }
+
+  function runAgentSearch() {
+    const q = $('agentSearchInput').value.trim().toLowerCase();
+    const box = $('agentSearchResults');
+    if (!q) {
+      box.innerHTML = '<div class="agent-search-empty">Ketik kata kunci untuk mencari di chat ini.</div>';
+      return;
+    }
+    const nodes = Array.from($('agentLog').querySelectorAll('.agent-item, .agent-step, .agent-note, .agent-thinking, .agent-pending'));
+    const hits = nodes.filter((n) => (n.textContent || '').toLowerCase().includes(q));
+    if (!hits.length) {
+      box.innerHTML = '<div class="agent-search-empty">Tidak ada hasil untuk "' + esc(q) + '".</div>';
+      return;
+    }
+    box.innerHTML = '';
+    hits.forEach((n, i) => {
+      const txt = (n.textContent || '').replace(/\s+/g, ' ').trim();
+      const snippet = txt.length > 120 ? txt.slice(0, 120) + '…' : txt;
+      const el = document.createElement('div');
+      el.className = 'agent-search-result';
+      el.innerHTML = '<span class="as-role">#' + (i + 1) + '</span>' + esc(snippet);
+      el.addEventListener('click', () => {
+        $('agentSearchModal').classList.add('hidden');
+        n.classList.remove('agent-hit');
+        void n.offsetWidth;
+        n.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        n.classList.add('agent-hit');
+      });
+      box.appendChild(el);
+    });
+  }
+
+  async function exportAgentChat() {
+    const msgs = (S.agent.messages || []).filter((m) => m.role !== 'system');
+    if (!msgs.length) { toast('Belum ada chat untuk di-export.'); return; }
+    const lines = [];
+    const stamp = new Date();
+    lines.push('# SahabatMobile Agent Chat');
+    lines.push('');
+    lines.push('Tanggal: ' + stamp.toLocaleString('id-ID'));
+    lines.push('Target: ' + (S.target.type === 'local' ? 'folder lokal' : S.target.type));
+    lines.push('');
+    for (const m of msgs) {
+      if (m.role === 'user') lines.push('## Anda\n\n' + agentContentText(m.content));
+      else if (m.role === 'assistant') lines.push('## AI\n\n' + agentContentText(m.content));
+      else if (m.role === 'tool') lines.push('### Tool\n\n' + agentContentText(m.content));
+      lines.push('');
+    }
+    const out = await api.saveFile(
+      lines.join('\n'),
+      'agent-chat-' + stamp.getTime() + '.md',
+      [{ name: 'Markdown', extensions: ['md'] }, { name: 'Teks', extensions: ['txt'] }],
+      'Export Chat Agent'
+    );
+    if (out && out.ok) toast('Chat di-export: ' + out.path);
+    else if (!out || !out.cancelled) toast('Gagal export chat');
   }
 
   // Batasi riwayat pesan agent agar payload API tidak membengkak.
@@ -2791,8 +2980,8 @@
     if (name === 'read_file') return api.agentReadFile(args.path, target);
     if (name === 'write_file') return api.agentWriteFile(args.path, args.content ?? '', target);
     if (name === 'run_command') {
-      const allowCmd = $('allowCmd') && $('allowCmd').checked;
-      return api.agentRunCommand(args.command, args.cwd, 120000, target, allowCmd);
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      return api.agentRunCommand(args.command, args.cwd, 120000, target, undefined, mode);
     }
     return { ok: false, error: 'Tool tidak dikenal: ' + name };
   }
@@ -2865,10 +3054,29 @@
     return el;
   }
 
+  function addAgentThinkingAction(text, model) {
+    const el = document.createElement('div');
+    el.className = 'agent-thinking agent-thinking-action';
+    el.innerHTML =
+      '<button type="button" class="agent-thinking-toggle">' +
+        '<span class="thinking-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg></span>' +
+        '<span class="agent-thinking-title">Thinking</span>' +
+        '<span class="agent-thinking-model">' + esc(model || '') + '</span>' +
+        '<span class="agent-thinking-caret">▾</span>' +
+      '</button>' +
+      '<pre class="agent-thinking-body">' + esc(text) + '</pre>';
+    el.querySelector('.agent-thinking-toggle').addEventListener('click', () => {
+      el.classList.toggle('collapsed');
+    });
+    $('agentLog').appendChild(el);
+    agentScrollToEnd('auto');
+    return el;
+  }
+
   function addAgentPending() {
     const el = document.createElement('div');
     el.className = 'agent-pending';
-    el.innerHTML = '<span class="arrow-spinner" role="status" aria-label="Memikirkan"><i></i><i></i><i></i><i></i><i></i></span>';
+    el.innerHTML = '<span class="ring-spinner" role="status" aria-label="Memikirkan">' + RING_DOTS + '</span>';
     $('agentLog').appendChild(el);
     agentScrollToEnd('auto');
     return el;
@@ -2883,7 +3091,7 @@
         '<span class="agent-step-icon">' + meta.icon + '</span>' +
         '<span class="agent-step-title">' + esc(meta.label) + '</span>' +
         '<code class="agent-step-cmd" title="' + esc(toolArgsPreview(name, args)) + '">' + esc(toolArgsPreview(name, args)) + '</code>' +
-        '<span class="agent-step-state"><span class="arrow-spinner arrow-spinner--xs" role="status" aria-label="Menjalankan"><i></i><i></i><i></i><i></i><i></i></span></span>' +
+        '<span class="agent-step-state"><span class="ring-spinner ring-spinner--xs" role="status" aria-label="Menjalankan">' + RING_DOTS + '</span><span class="agent-step-running-text">Menjalankan...</span></span>' +
       '</div>' +
       '<div class="agent-step-out hidden"></div>';
     $('agentLog').appendChild(el);
@@ -2944,12 +3152,12 @@
     agentScrollToEnd('auto');
   }
 
-  const THINKING_SPINNER = '<span class="arrow-spinner arrow-spinner--inline" role="status" aria-label="Memikirkan"><i></i><i></i><i></i><i></i><i></i></span>';
+  const THINKING_SPINNER = '<span class="ring-spinner ring-spinner--inline" role="status" aria-label="Memikirkan">' + RING_DOTS + '</span>';
 
   function setAgentStatus(text) {
     const el = $('agentStatus');
     if (!text) { el.innerHTML = ''; return; }
-    if (/^Memikirkan/i.test(text)) { el.innerHTML = THINKING_SPINNER; return; }
+    if (/^(Memikirkan|Menjalankan)/i.test(text)) { el.innerHTML = THINKING_SPINNER; return; }
     el.textContent = text;
   }
 
@@ -2967,6 +3175,7 @@
     if (!S.settings.hasKey) { openSettings(); return; }
     if (S.target.type === 'local' && !S.local.root) { toast('Buka folder kerja dulu.'); return; }
     if (S.target.type !== 'local' && !remoteSession()) { toast('Koneksi remote tidak aktif.'); return; }
+    stopVoiceChat();
     input.value = '';
     S.agent.busy = true;
     $('agentSend').classList.add('hidden');
@@ -3044,7 +3253,7 @@
           // Deteksi macet: perintah identik diulang 3x berturut-turut = loop tanpa hasil.
           const sig = fn + '|' + JSON.stringify(args);
           if (sig === lastSig) repeatCount += 1; else { lastSig = sig; repeatCount = 0; }
-          setAgentStatus('Menjalankan ' + toolArgsPreview(fn, args).slice(0, 90) + '...');
+          addAgentThinkingAction('Menjalankan ' + toolArgsPreview(fn, args), currentModel());
           const stepEl = addAgentStep(fn, args);
           let result;
           try { result = await execTool(fn, args); } catch (err) { result = { ok: false, error: (err && err.message) || String(err) }; }
@@ -3145,6 +3354,184 @@
     el.appendChild(btn);
   }
 
+  const SPEAK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+  const STOP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+
+  function attachSpeak(el, text) {
+    if (!el || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+    const btn = document.createElement('button');
+    btn.className = 'msg-copy msg-speak';
+    btn.title = 'Bacakan suara (text-to-speech)';
+    btn.innerHTML = SPEAK_SVG;
+    let speaking = false;
+    btn.addEventListener('click', () => {
+      if (speaking) {
+        window.speechSynthesis.cancel();
+        speaking = false;
+        btn.innerHTML = SPEAK_SVG;
+        return;
+      }
+      const u = new SpeechSynthesisUtterance(String(text || ''));
+      u.lang = 'id-ID';
+      u.rate = 1;
+      u.onend = () => { speaking = false; btn.innerHTML = SPEAK_SVG; };
+      u.onerror = () => { speaking = false; btn.innerHTML = SPEAK_SVG; };
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+      speaking = true;
+      btn.innerHTML = STOP_SVG;
+    });
+    el.appendChild(btn);
+  }
+
+  // ---------- Voice chat (record + transkripsi via gateway ASR) ----------
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let voiceRecording = false;
+  let voiceTarget = 'chatInput';
+
+  function setVoiceRecording(on) {
+    voiceRecording = on;
+    ['voiceChatBtn', 'voiceAgentBtn'].forEach((id) => {
+      const btn = $(id);
+      if (btn) {
+        btn.classList.toggle('recording', on);
+        btn.title = on ? 'Berhenti merekam (klik lagi)' : 'Voice chat — bicara (record + transkripsi)';
+      }
+    });
+    const st = $('chatStatus');
+    if (st) st.textContent = on ? 'Merekam suara...' : '';
+    const ast = $('agentStatus');
+    if (ast) ast.textContent = on ? 'Merekam suara...' : '';
+  }
+
+  function stopVoiceChat() {
+    setVoiceRecording(false);
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try { mediaRecorder.stop(); } catch { /* abaikan */ }
+    }
+  }
+
+  async function startVoiceRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast('Browser tidak mendukung akses microphone.');
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      toast('Browser tidak mendukung perekaman audio.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) audioChunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => { try { t.stop(); } catch { /* abaikan */ } });
+        await transcribeRecording();
+      };
+      mediaRecorder.start();
+      setVoiceRecording(true);
+      toast('Merekam... klik lagi untuk berhenti.');
+    } catch (e) {
+      const msg = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')
+        ? 'Izin microphone ditolak.'
+        : ('Gagal mengakses microphone: ' + (e && e.message ? e.message : e));
+      toast(msg);
+      setVoiceRecording(false);
+    }
+  }
+
+  function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
+
+  function audioBufferToWav(buffer) {
+    const numCh = Math.min(2, buffer.numberOfChannels || 1);
+    const sampleRate = buffer.sampleRate || 16000;
+    const samples = buffer.length;
+    const dataLen = samples * numCh * 2;
+    const wav = new ArrayBuffer(44 + dataLen);
+    const view = new DataView(wav);
+    const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + dataLen, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numCh, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numCh * 2, true);
+    view.setUint16(32, numCh * 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataLen, true);
+    let off = 44;
+    for (let i = 0; i < samples; i++) {
+      for (let ch = 0; ch < numCh; ch++) {
+        let s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i] || 0));
+        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        off += 2;
+      }
+    }
+    return wav;
+  }
+
+  async function transcribeRecording() {
+    setVoiceRecording(false);
+    const mime = (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
+    const blob = new Blob(audioChunks, { type: mime });
+    if (!blob.size) { toast('Tidak ada suara terrekam.'); return; }
+    setChatStatus('Mengirim audio ke model ASR...');
+    try {
+      const arrayBuf = await blob.arrayBuffer();
+      const AC = window.AudioContext || window.webkitAudioContext;
+      let wav = arrayBuf;
+      let format = mime.replace(/^audio\//, '').split(';')[0];
+      try {
+        const ctx = new AC();
+        const audioBuf = await ctx.decodeAudioData(arrayBuf);
+        wav = audioBufferToWav(audioBuf);
+        format = 'wav';
+        if (ctx.close) ctx.close();
+      } catch { /* kirim format asli bila decode gagal */ }
+      const b64 = arrayBufferToBase64(wav);
+      const res = await api.transcribeAudio(b64, format);
+      if (res && res.ok) {
+        const text = String(res.text || '').trim();
+        if (text) {
+          const input = $(voiceTarget);
+          if (input) {
+            input.value = text;
+            input.focus();
+          }
+          toast('Transkripsi: ' + (text.length > 60 ? text.slice(0, 60) + '…' : text));
+        } else {
+          toast('Tidak ada teks yang dikenali.');
+        }
+      } else {
+        toast((res && res.error) || 'Transkripsi gagal.');
+      }
+    } catch (e) {
+      toast('Gagal memproses audio: ' + (e && e.message ? e.message : e));
+    } finally {
+      setChatStatus('');
+    }
+  }
+
+  function toggleVoiceChat(target) {
+    voiceTarget = target || 'chatInput';
+    if (voiceRecording) { stopVoiceChat(); return; }
+    startVoiceRecording();
+  }
+
   function chatAdd(role, text, images) {
     const empty = $('chat').querySelector('.empty');
     if (empty) empty.remove();
@@ -3152,7 +3539,8 @@
     trimChat();
     const row = document.createElement('div');
     row.className = 'message ' + role;
-    row.innerHTML = '<div class="avatar">' + (role === 'user' ? 'You' : role === 'error' ? '!' : 'AI') + '</div><div class="bubble"></div>';
+    const name = role === 'user' ? 'Anda' : role === 'error' ? 'Error' : 'AI';
+    row.innerHTML = '<div class="message-header"><div class="avatar">' + (role === 'user' ? 'You' : role === 'error' ? '!' : 'AI') + '</div><span class="message-username">' + name + '</span></div><div class="bubble"></div>';
     const bubble = row.querySelector('.bubble');
     if (images && images.length) {
       const wrap = document.createElement('div');
@@ -3171,6 +3559,7 @@
     else body.textContent = text || '';
     bubble.appendChild(body);
     if (role !== 'error' && text) attachCopy(bubble, text);
+    if (role === 'assistant' && text) attachSpeak(bubble, text);
     $('chat').appendChild(row);
     $('chat').scrollTop = $('chat').scrollHeight;
     return body;
@@ -3295,6 +3684,7 @@
     const images = S.attachments.slice();
     if ((!text && !images.length) || S.busy) return;
     if (!S.settings.hasKey) { openSettings(); return; }
+    stopVoiceChat();
     input.value = '';
     S.attachments = [];
     renderAttachments();
@@ -3311,7 +3701,7 @@
     const body = chatAdd('assistant', '');
     body.innerHTML =
       '<span class="agent-thinking-row">' +
-        '<span class="arrow-spinner agent-thinking-spinner" role="status" aria-label="Memikirkan"><i></i><i></i><i></i><i></i><i></i></span>' +
+        '<span class="ring-spinner agent-thinking-spinner" role="status" aria-label="Memikirkan">' + RING_DOTS + '</span>' +
         '<span class="agent-thinking-label">Memikirkan…</span>' +
       '</span>';
     const requestId = 'req-' + Date.now();
@@ -3698,6 +4088,18 @@
     toast('Repository di-clone: ' + dirName(res.root));
   }
 
+  function setAgentApprovalMode(mode) {
+    const opt = document.querySelector('.agent-approval-opt[data-mode="' + mode + '"]');
+    if (!opt) return;
+    document.querySelectorAll('.agent-approval-opt').forEach((o) => o.classList.toggle('active', o === opt));
+    const title = opt.querySelector('.ao-title');
+    const icon = opt.querySelector('.ao-icon');
+    $('agentApprovalLabel').textContent = title ? title.textContent : mode;
+    $('agentApprovalIcon').innerHTML = icon ? icon.innerHTML : '';
+    if (S.settings) S.settings.agentApproval = mode;
+    try { api.saveSettings({ agentApproval: mode }); } catch { /* abaikan */ }
+  }
+
   // ---------- Bind ----------
   function bind() {
     document.querySelectorAll('.act[data-view]').forEach((b) => b.addEventListener('click', () => switchView(b.dataset.view)));
@@ -3826,6 +4228,8 @@
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
     $('attachChat').addEventListener('click', () => $('chatFiles').click());
+    $('voiceChatBtn').addEventListener('click', () => toggleVoiceChat('chatInput'));
+    $('voiceAgentBtn').addEventListener('click', () => toggleVoiceChat('agentInput'));
     $('chatFiles').addEventListener('change', (e) => {
       addChatImages(e.target.files);
       e.target.value = '';
@@ -3870,8 +4274,49 @@
     $('agentClear').addEventListener('click', () => {
       if (S.agent.busy) { toast('Tunggu agent selesai dulu.'); return; }
       S.agent.messages = [];
-      $('agentLog').innerHTML = '<div class="agent-empty"><div class="agent-empty-title">Agent</div><p>Riwayat dibersihkan. Mulai tugas baru.</p></div>';
+      resetAgentLog();
       toast('Riwayat agent dibersihkan');
+    });
+    $('agentNew').addEventListener('click', newAgentTask);
+    $('agentHistory').addEventListener('click', openAgentHistory);
+    $('agentSearch').addEventListener('click', openAgentSearch);
+    $('agentExport').addEventListener('click', exportAgentChat);
+    $('agentHistoryClose').addEventListener('click', () => $('agentHistoryModal').classList.add('hidden'));
+    $('agentSearchClose').addEventListener('click', () => $('agentSearchModal').classList.add('hidden'));
+    $('agentHistoryModal').addEventListener('click', (e) => { if (e.target.id === 'agentHistoryModal') $('agentHistoryModal').classList.add('hidden'); });
+    $('agentSearchModal').addEventListener('click', (e) => { if (e.target.id === 'agentSearchModal') $('agentSearchModal').classList.add('hidden'); });
+    $('agentSearchInput').addEventListener('input', runAgentSearch);
+    $('agentLog').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-agent-prompt]');
+      if (!btn) return;
+      const input = $('agentInput');
+      if (!input) return;
+      input.value = btn.dataset.agentPrompt || '';
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+    loadAgentHistory();
+    $('agentApprovalBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      $('agentApprovalPop').classList.toggle('hidden');
+    });
+    $('agentApprovalPop').addEventListener('click', (e) => {
+      const opt = e.target.closest('.agent-approval-opt');
+      if (!opt) return;
+      setAgentApprovalMode(opt.dataset.mode);
+      $('agentApprovalPop').classList.add('hidden');
+      const title = opt.querySelector('.ao-title');
+      toast('Mode persetujuan: ' + (title ? title.textContent : opt.dataset.mode));
+    });
+    $('agentApprovalLearn').addEventListener('click', (e) => {
+      e.preventDefault();
+      toast('Manual: semua aksi dikonfirmasi. Auto: aksi berisiko dikonfirmasi. Full: tanpa konfirmasi. Custom: atur di sahabat.agent.json.');
+    });
+    document.addEventListener('click', (e) => {
+      const pop = $('agentApprovalPop');
+      if (pop && !pop.classList.contains('hidden') && !e.target.closest('.agent-approval')) {
+        pop.classList.add('hidden');
+      }
     });
     document.querySelectorAll('.shortcut-help-btn').forEach((b) => b.addEventListener('click', openShortcutGuide));
     $('closeShortcut').addEventListener('click', () => $('shortcutModal').classList.add('hidden'));
@@ -4003,6 +4448,7 @@
     await refreshExtensions();
     S.settings = await api.getSettings();
     $('agentThinking').value = (S.settings && S.settings.agentThinking) || 'default';
+    setAgentApprovalMode((S.settings && S.settings.agentApproval) || 'manual');
     updateKeyBadge();
     renderModelOptions();
     S.chat = loadChat();
@@ -4019,6 +4465,7 @@
     updateWsWelcome();
     updateStatusBar();
     if ($('statusbar')) $('statusbar').classList.remove('hidden');
+    if (S.view && S.view !== 'chat') switchView(S.view);
     if ($('crumbIcon')) $('crumbIcon').innerHTML = VIEW_ICONS[S.view || 'chat'] || '';
     if ($('viewTitle')) $('viewTitle').textContent = VIEW_TITLES[S.view || 'chat'] || 'Chat';
 

@@ -24,6 +24,7 @@ let workspaceRoot = null;
 let termSeq = 0;
 let remoteSeq = 0;
 let allowAgentCommands = false;
+let agentApprovalMode = 'manual';
 
 function encryptSecret(value) {
   const text = String(value || '');
@@ -1800,6 +1801,21 @@ ipcMain.handle('dialog:saveCsv', async (event, payload) => {
   return { ok: true, path: result.filePath };
 });
 
+ipcMain.handle('dialog:saveFile', async (event, payload) => {
+  const content = String((payload && payload.content) || '');
+  const filters = Array.isArray(payload && payload.filters) && payload.filters.length
+    ? payload.filters
+    : [{ name: 'Teks', extensions: ['txt'] }];
+  const result = await dialog.showSaveDialog({
+    title: (payload && payload.title) || 'Simpan File',
+    defaultPath: (payload && payload.defaultPath) || 'file.txt',
+    filters,
+  });
+  if (result.canceled || !result.filePath) return { ok: false, cancelled: true };
+  fs.writeFileSync(result.filePath, content, 'utf8');
+  return { ok: true, path: result.filePath };
+});
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1380,
@@ -2415,6 +2431,7 @@ async function fastRename(srcSession, srcPath, dstSession, dstPath) {
 app.whenReady().then(() => {
   storedKey = loadKey();
   restoreWorkspaceRoot();
+  agentApprovalMode = readSettings().agentApproval || 'manual';
   buildAppMenu();
   createWindow();
   app.on('activate', () => {
@@ -2442,6 +2459,7 @@ ipcMain.handle('settings:get', () => {
     updateFeed: s.updateFeed || DEFAULT_UPDATE_FEED,
     autoUpdate: s.autoUpdate !== false,
     agentThinking: ['default', 'low', 'mid', 'high', 'xhigh'].includes(s.agentThinking) ? s.agentThinking : 'default',
+    agentApproval: ['manual', 'auto', 'full', 'custom'].includes(s.agentApproval) ? s.agentApproval : 'manual',
     modelAccessMode: ['auto', 'payg', 'hemat', 'coding', 'minimax', 'pro'].includes(s.modelAccessMode) ? s.modelAccessMode : 'auto',
     modelAccessAll: s.modelAccessAll === true,
     modelBlockedCount: Array.isArray(s.modelBlocked) ? s.modelBlocked.length : 0
@@ -2613,6 +2631,10 @@ ipcMain.handle('settings:set', (event, payload) => {
     const v = payload.agentThinking.toLowerCase();
     if (['default', 'low', 'mid', 'high', 'xhigh'].includes(v)) data.agentThinking = v;
   }
+  if (typeof payload.agentApproval === 'string' && ['manual', 'auto', 'full', 'custom'].includes(payload.agentApproval)) {
+    data.agentApproval = payload.agentApproval;
+    agentApprovalMode = payload.agentApproval;
+  }
   writeSettings(data);
   if (payload.apiKey && payload.apiKey.trim()) {
     saveKey(payload.apiKey.trim());
@@ -2626,6 +2648,7 @@ ipcMain.handle('settings:set', (event, payload) => {
     updateFeed: s.updateFeed || DEFAULT_UPDATE_FEED,
     autoUpdate: s.autoUpdate !== false,
     agentThinking: ['default', 'low', 'mid', 'high', 'xhigh'].includes(s.agentThinking) ? s.agentThinking : 'default',
+    agentApproval: ['manual', 'auto', 'full', 'custom'].includes(s.agentApproval) ? s.agentApproval : 'manual',
     modelAccessMode: ['auto', 'payg', 'hemat'].includes(s.modelAccessMode) ? s.modelAccessMode : 'auto',
     modelAccessAll: s.modelAccessAll === true,
     modelBlockedCount: Array.isArray(s.modelBlocked) ? s.modelBlocked.length : 0
@@ -2771,6 +2794,31 @@ ipcMain.handle('chat:abort', (event, requestId) => {
   const controller = controllers.get(requestId);
   if (controller) controller.abort();
   return { ok: true };
+});
+
+ipcMain.handle('audio:transcribe', async (event, payload) => {
+  if (!storedKey) return { ok: false, error: 'API key belum diisi.' };
+  const data = String((payload && payload.data) || '');
+  const format = String((payload && payload.format) || 'wav');
+  if (!data) return { ok: false, error: 'Audio kosong.' };
+  try {
+    const res = await fetch(getBaseUrl() + '/chat/completions', {
+      method: 'POST',
+      headers: authHeaders(storedKey),
+      body: JSON.stringify({
+        model: 'mimo-v2.5-asr',
+        messages: [{ role: 'user', content: [{ type: 'input_audio', input_audio: { data, format } }] }]
+      })
+    });
+    const text = await res.text();
+    if (!res.ok) return { ok: false, error: errorMessage(res.status, text) };
+    let json;
+    try { json = JSON.parse(text); } catch { return { ok: false, error: 'Respons transkripsi tidak valid.' }; }
+    const content = json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content;
+    return { ok: true, text: String(content || '') };
+  } catch (err) {
+    return { ok: false, error: 'Gagal transkripsi: ' + err.message };
+  }
 });
 
 function completionFromParsed(parsed) {
@@ -3514,11 +3562,49 @@ ipcMain.handle('agent:writeFile', async (event, payload) => {
   }
 });
 
+const RISKY_COMMAND_RE = /\b(rm|rmdir|del|erase|format|mkfs|dd|shutdown|reboot|kill|taskkill|reg\s+delete|net\s+user|sudo|chmod|chown|git\s+reset|git\s+clean|git\s+push|npm\s+(install|i|ci|publish)|pnpm\s+add|yarn\s+add|pip\s+install|apt(?:-get)?\s+install|yum\s+install|dnf\s+install|brew\s+install|winget\s+install|choco\s+install|docker\s+rm|docker\s+rmi|kubectl\s+delete)\b/i;
+
+function isRiskyCommand(cmd) {
+  return RISKY_COMMAND_RE.test(String(cmd || ''));
+}
+
+function customApprovalVerdict(cmd) {
+  try {
+    const candidates = [];
+    if (workspaceRoot) candidates.push(path.join(workspaceRoot, 'sahabat.agent.json'));
+    candidates.push(path.join(app.getPath('userData'), 'sahabat.agent.json'));
+    let cfg = null;
+    for (const p of candidates) {
+      try { cfg = JSON.parse(fs.readFileSync(p, 'utf8')); break; } catch { /* coba berikutnya */ }
+    }
+    if (!cfg) return null;
+    const toRe = (pat) => new RegExp('^' + String(pat).split('*').map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$', 'i');
+    if (Array.isArray(cfg.allow) && cfg.allow.some((p) => toRe(p).test(cmd))) return 'allow';
+    if (Array.isArray(cfg.deny) && cfg.deny.some((p) => toRe(p).test(cmd))) return 'deny';
+  } catch { /* abaikan */ }
+  return null;
+}
+
+function agentNeedsApproval(command, mode) {
+  const m = ['manual', 'auto', 'full', 'custom'].includes(mode) ? mode : agentApprovalMode;
+  if (m === 'full') return 'no';
+  if (m === 'auto') return isRiskyCommand(command) ? 'yes' : 'no';
+  if (m === 'custom') {
+    const v = customApprovalVerdict(command);
+    if (v === 'allow') return 'no';
+    if (v === 'deny') return 'deny';
+    return 'yes';
+  }
+  return 'yes';
+}
+
 ipcMain.handle('agent:runCommand', async (event, payload) => {
   const ctx = resolveAgentTarget(payload.target);
   const win = BrowserWindow.fromWebContents(event.sender);
   const where = ctx.kind === 'remote' ? (ctx.type === 'ssh' ? 'server SSH' : 'server FTP (tidak didukung)') : 'folder lokal';
-  if (!allowAgentCommands && !payload.allow) {
+  const verdict = agentNeedsApproval(String(payload.command || ''), payload.approval);
+  if (verdict === 'deny') return { ok: true, denied: true, output: 'Perintah ditolak aturan Custom.' };
+  if (!allowAgentCommands && !payload.allow && verdict === 'yes') {
     const answer = await dialog.showMessageBox(win, {
       type: 'warning',
       buttons: ['Jalankan', 'Batal'],

@@ -201,12 +201,18 @@
           <div id="chatAttachments" class="attachments hidden"></div>
           <textarea id="chatInput" rows="2" placeholder="Tanya apa saja... (Enter kirim, Shift+Enter baris baru, tempel gambar dengan Ctrl+V)"></textarea>
           <div class="actions">
+            <button id="voiceChatBtn" class="ghost small voice-btn" title="Voice chat — bicara ke AI (record + transkripsi)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
+              <span>Voice</span>
+            </button>
             <button id="attachChat" class="ghost small" title="Lampirkan gambar (atau tempel / seret ke sini)">Gambar</button>
             <input id="chatFiles" type="file" accept="image/*" multiple class="file-hidden" />
             <select id="modelSelect" class="select-small" title="Pilih model"></select>
             <button class="ghost small shortcut-help-btn" title="Panduan shortcut (Enter kirim, Shift+Enter baris baru)">⌨ Shortcut</button>
             <span class="keyBadge badge off">Key belum diisi</span>
-            <button class="openSettings ghost small" type="button">Pengaturan</button>
+            <button class="openSettings icon-btn" type="button" title="Pengaturan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            </button>
             <span id="chatStatus" class="status"></span>
             <button id="newChat" class="ghost small" title="Mulai percakapan baru">Chat baru</button>
             <button id="stopChat" class="ghost small hidden">Stop</button>
@@ -311,6 +317,10 @@
                   <option value="xhigh">Thinking: XHigh</option>
                 </select>
                 <span id="agentTarget" class="agent-target">lokal</span>
+                <button id="agentNew" class="icon-btn" title="Tugas baru"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+                <button id="agentHistory" class="icon-btn" title="Riwayat tugas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg></button>
+                <button id="agentSearch" class="icon-btn" title="Cari tugas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg></button>
+                <button id="agentExport" class="icon-btn" title="Export chat ke file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg></button>
                 <button id="agentClear" class="icon-btn" title="Bersihkan riwayat agent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
                 <button id="agentMax" class="icon-btn" title="Perbesar panel agent"><svg viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M4 4l6 6M20 20h-6M20 20v-6M20 20l-6-6"/></svg></button>
                 <button id="agentClose" class="icon-btn" title="Tutup panel agent"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -340,11 +350,48 @@
             <div class="agent-input">
               <textarea id="agentInput" rows="3" placeholder="Minta agen memperbaiki atau membuat project di explorer aktif... (Enter kirim, Shift+Enter baris baru)"></textarea>
               <div class="actions">
-                <label class="mini-check"><input type="checkbox" id="allowCmd" /> izinkan perintah</label>
+                <button id="voiceAgentBtn" class="icon-btn voice-btn" type="button" title="Voice chat — bicara ke agent (record + transkripsi)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="9" y1="22" x2="15" y2="22"/></svg>
+                </button>
+                <div class="agent-approval">
+                  <button id="agentApprovalBtn" class="agent-approval-btn" type="button">
+                    <span class="agent-approval-icon" id="agentApprovalIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg></span>
+                    <span id="agentApprovalLabel">Manual Approval</span>
+                    <span class="agent-approval-caret">▾</span>
+                  </button>
+                  <div id="agentApprovalPop" class="agent-approval-pop hidden">
+                    <div class="agent-approval-head">
+                      <span>How should Agent actions be approved?</span>
+                      <a href="#" id="agentApprovalLearn">Learn more</a>
+                    </div>
+                    <button class="agent-approval-opt" data-mode="manual" type="button">
+                      <span class="ao-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg></span>
+                      <span class="ao-text"><span class="ao-title">Manual Approval</span><span class="ao-desc">You confirm important actions</span></span>
+                      <span class="ao-check">✓</span>
+                    </button>
+                    <button class="agent-approval-opt" data-mode="auto" type="button">
+                      <span class="ao-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg></span>
+                      <span class="ao-text"><span class="ao-title">Auto Approval</span><span class="ao-desc">AI reviews actions and asks you when needed</span></span>
+                      <span class="ao-check">✓</span>
+                    </button>
+                    <button class="agent-approval-opt" data-mode="full" type="button">
+                      <span class="ao-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg></span>
+                      <span class="ao-text"><span class="ao-title">Full Access</span><span class="ao-desc">Run directly on your computer without approval</span></span>
+                      <span class="ao-check">✓</span>
+                    </button>
+                    <button class="agent-approval-opt" data-mode="custom" type="button">
+                      <span class="ao-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
+                      <span class="ao-text"><span class="ao-title">Custom</span><span class="ao-desc">Set rules in the config file</span></span>
+                      <span class="ao-check">✓</span>
+                    </button>
+                  </div>
+                </div>
                 <select id="modelSelectAgent" class="select-small" title="Pilih model"></select>
                 <button class="ghost small shortcut-help-btn" title="Panduan shortcut">⌨ Shortcut</button>
                 <span class="keyBadge badge off">Key belum diisi</span>
-                <button class="openSettings ghost small" type="button">Pengaturan</button>
+                <button class="openSettings icon-btn" type="button" title="Pengaturan">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+                </button>
                 <span id="agentStatus" class="status small"></span>
                 <button id="agentStop" class="ghost small hidden" type="button">Stop</button>
                 <button id="agentSend" class="primary small">Kirim</button>
@@ -671,6 +718,27 @@
       </div>
       <div class="modal-actions">
         <button id="closeShortcut" class="primary">Mengerti</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="agentHistoryModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Riwayat Tugas</h3>
+      <div id="agentHistoryList" class="agent-history-list"></div>
+      <div class="modal-actions">
+        <button id="agentHistoryClose" class="ghost">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="agentSearchModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Cari Tugas</h3>
+      <input id="agentSearchInput" class="agent-search-input" placeholder="Kata kunci di chat ini..." autocomplete="off" />
+      <div id="agentSearchResults" class="agent-search-results"></div>
+      <div class="modal-actions">
+        <button id="agentSearchClose" class="ghost">Tutup</button>
       </div>
     </div>
   </div>

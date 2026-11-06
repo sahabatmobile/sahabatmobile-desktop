@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('sahabat', {
   dbRedisValue: (id, key) => ipcRenderer.invoke('db:redisValue', { id, key }),
   openFileDialog: (options) => ipcRenderer.invoke('dialog:openFile', options),
   saveCsv: (content, defaultPath) => ipcRenderer.invoke('dialog:saveCsv', { content, defaultPath }),
+  saveFile: (content, defaultPath, filters, title) => ipcRenderer.invoke('dialog:saveFile', { content, defaultPath, filters, title }),
   extRemove: (id) => ipcRenderer.invoke('ext:remove', id),
   extSetEnabled: (id, enabled) => ipcRenderer.invoke('ext:setEnabled', id, enabled),
   extOpenDir: () => ipcRenderer.invoke('ext:openDir'),
@@ -103,5 +104,6 @@ contextBridge.exposeInMainWorld('sahabat', {
   agentListDir: (dir, target) => ipcRenderer.invoke('agent:listDir', { dir, target }),
   agentReadFile: (path, target) => ipcRenderer.invoke('agent:readFile', { path, target }),
   agentWriteFile: (path, content, target) => ipcRenderer.invoke('agent:writeFile', { path, content, target }),
-  agentRunCommand: (command, cwd, timeoutMs, target, allow) => ipcRenderer.invoke('agent:runCommand', { command, cwd, timeoutMs, target, allow })
+  agentRunCommand: (command, cwd, timeoutMs, target, allow, approval) => ipcRenderer.invoke('agent:runCommand', { command, cwd, timeoutMs, target, allow, approval }),
+  transcribeAudio: (data, format) => ipcRenderer.invoke('audio:transcribe', { data, format })
 });
