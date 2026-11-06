@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.1.0/SahabatMobile-Desktop-Setup-1.1.0.exe",
-  "notes": "Rilis SahabatMobile Desktop v1.1.0.",
+  "version": "1.2.0",
+  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.2.0/SahabatMobile-Desktop-Setup-1.2.0.exe",
+  "notes": "Terminal interaktif (PTY), Command Palette, status bar, tema premium, spinner ala OpenCode, perbaikan leak & performa.",
   "mandatory": false
 }

@@ -103,7 +103,8 @@
     extFilter: 'all',
     ui: {
       sideWidth: parseInt(localStorage.getItem('sahabat.sideWidth'), 10) || 252,
-      agentWidth: parseInt(localStorage.getItem('sahabat.agentWidth'), 10) || 344
+      agentWidth: parseInt(localStorage.getItem('sahabat.agentWidth'), 10) || 344,
+      termHeight: parseInt(localStorage.getItem('sahabat.termHeight'), 10) || 220
     }
   };
 
@@ -111,6 +112,18 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const baseName = (p) => String(p || '').split(/[\\/]/).pop();
   const dirName = (p) => String(p || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || p;
+
+  const FILE_COLORS = {
+    js: '#f7df1e', mjs: '#f7df1e', cjs: '#f7df1e', jsx: '#61dafb', ts: '#3178c6', tsx: '#3178c6',
+    html: '#e34c26', htm: '#e34c26', css: '#264de4', scss: '#c6538c', less: '#1d365d',
+    json: '#8bc34a', md: '#e8eaf0', txt: '#9e9e9e', php: '#777bb4', py: '#3776ab',
+    rb: '#cc342d', go: '#00add8', rs: '#dea584', sql: '#f29111', xml: '#f16529',
+    svg: '#ffb13b', png: '#4caf50', jpg: '#4caf50', jpeg: '#4caf50', gif: '#4caf50'
+  };
+  function fileColor(name) {
+    const ext = String(name || '').split('.').pop().toLowerCase();
+    return FILE_COLORS[ext] || 'transparent';
+  }
   const joinRemote = (dir, name) => (String(dir).replace(/\/+$/, '') || '') + '/' + name;
 
   const DB_PROTOCOLS = ['mysql', 'postgres', 'sqlite', 'sqlserver', 'mongodb', 'redis', 'elasticsearch'];
@@ -134,7 +147,11 @@
     el.className = 'toast';
     el.textContent = msg;
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2600);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 220);
+    }, 2400);
   }
 
   function updateKeyBadge() {
@@ -143,6 +160,7 @@
       badge.textContent = on ? 'Key •••• ' + (S.settings.keyHint || '') : 'Key belum diisi';
       badge.className = 'keyBadge badge ' + (on ? 'on' : 'off');
     });
+    updateStatusBar();
   }
 
   function currentModel() {
@@ -163,6 +181,7 @@
     $('apiModel').textContent = id;
     renderSnippet();
     updateThinkingAvailability();
+    updateStatusBar();
   }
 
   function updateThinkingAvailability() {
@@ -209,6 +228,14 @@
   }
 
   // ---------- Views ----------
+  const VIEW_ICONS = {
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.6A8.6 8.6 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg>',
+    workspace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>',
+    models: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+    api: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    extensions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3h4v3a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4v-3a2 2 0 1 0-4 0v3h-4v-3a2 2 0 1 0-4 0v3H3v-4h3a2 2 0 1 0 0-4H3V6h3a2 2 0 1 0 4 0z"/></svg>'
+  };
+
   function switchView(view) {
     S.view = view;
     document.querySelectorAll('.act[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
@@ -216,6 +243,7 @@
     const target = $('view-' + view);
     if (target) target.classList.remove('hidden');
     $('viewTitle').textContent = VIEW_TITLES[view] || view;
+    if ($('crumbIcon')) $('crumbIcon').innerHTML = VIEW_ICONS[view] || '';
     $('viewTitle').classList.toggle('hidden', view === 'workspace');
     const topbar = document.querySelector('.topbar');
     if (topbar) topbar.classList.toggle('hidden', view === 'workspace');
@@ -224,7 +252,7 @@
     const showWorkspacePane = view === 'workspace';
     $('app').classList.toggle('no-side', !showExtensionsPane && !showWorkspacePane);
     const appEl = document.querySelector('.app');
-    appEl.classList.remove('max-explorer', 'max-agent', 'max-terminal', 'hide-side', 'hide-agent');
+    appEl.classList.remove('max-explorer', 'max-agent', 'max-terminal', 'max-editor', 'hide-side', 'hide-agent');
     $('explorerRail').classList.add('hidden');
     $('agentRail').classList.add('hidden');
     $('termPane').classList.remove('max');
@@ -247,6 +275,8 @@
     }
     if (view === 'models' && S.settings.hasKey) renderModelList();
     if (view === 'extensions') renderExtensions();
+    updateStatusBar();
+    updateChatHero();
     setTimeout(() => {
       fitAll();
       try { S.editor && S.editor.resize(true); } catch {}
@@ -297,10 +327,13 @@
       sel.appendChild(group);
     }
     sel.value = targetValue();
+    updateStatusBar();
   }
 
   function setSideStatus(text) {
-    $('sideStatus').textContent = text;
+    const label = $('sideStatusText');
+    if (label) label.textContent = text;
+    else $('sideStatus').textContent = text;
   }
 
   async function refreshSavedConnections() {
@@ -586,9 +619,10 @@
       row.className = 'tree-row';
       row.style.paddingLeft = 8 + depth * 14 + 'px';
       row.title = node.path;
+      const dot = '<span class="file-dot" style="background:' + (node.dir ? '#5b8def' : fileColor(node.name)) + '"></span>';
       if (node.dir) {
         const open = S.local.expanded.has(node.path);
-        row.innerHTML = '<span class="caret">' + (open ? '▾' : '▸') + '</span><span class="fname">' + esc(node.name) + '</span>';
+        row.innerHTML = '<span class="caret">' + (open ? '▾' : '▸') + '</span><span class="fname">' + dot + esc(node.name) + '</span>';
         row.addEventListener('click', () => {
           if (S.local.expanded.has(node.path)) S.local.expanded.delete(node.path);
           else S.local.expanded.add(node.path);
@@ -599,7 +633,7 @@
         box.appendChild(row);
         if (open) renderTreeNodes(node.children || [], depth + 1);
       } else {
-        row.innerHTML = '<span class="caret">·</span><span class="fname">' + esc(node.name) + '</span>';
+        row.innerHTML = '<span class="caret">·</span><span class="fname">' + dot + esc(node.name) + '</span>';
         row.addEventListener('click', () => openFile(node.path));
         row.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showEntryMenu(e.clientX, e.clientY, node); });
         box.appendChild(row);
@@ -627,7 +661,7 @@
       const row = document.createElement('div');
       row.className = 'tree-row';
       row.title = item.path;
-      row.innerHTML = '<span class="caret">' + (item.dir ? '▸' : '·') + '</span><span class="fname">' + esc(item.name) + '</span>';
+      row.innerHTML = '<span class="caret">' + (item.dir ? '▸' : '·') + '</span><span class="fname"><span class="file-dot" style="background:' + (item.dir ? '#5b8def' : fileColor(item.name)) + '"></span>' + esc(item.name) + '</span>';
       row.addEventListener('click', () => {
         if (item.dir) loadRemoteDir(item.path);
         else openFile(item.path);
@@ -884,6 +918,8 @@
       }
     }
     setTimeout(() => { fitAll(); try { S.editor && S.editor.resize(true); } catch {} }, 80);
+    updateWsWelcome();
+    updateStatusBar();
   }
 
   async function switchTarget(value) {
@@ -1003,6 +1039,7 @@
     btn.textContent = editingId ? 'Simpan & Hubungkan' : 'Hubungkan';
     if (!res.ok) { toast('Koneksi gagal: ' + (res.error || 'unknown')); return; }
     const conn = { id: res.id, type: 'db', label: res.label, protocol: res.protocol, host: res.host, port: res.port, username: res.username, savedId: res.savedId };
+    S.connections = S.connections.filter((c) => c.id !== conn.id);
     S.connections.push(conn);
     S.remotes.set(res.id, conn);
     if (res.savedId) toast('Koneksi tersimpan');
@@ -1043,6 +1080,7 @@
     btn.textContent = editingId ? 'Simpan & Hubungkan' : 'Hubungkan';
     if (!res.ok) { toast('Koneksi gagal: ' + (res.error || 'unknown')); return; }
     const conn = { id: res.id, type: res.type, label: res.label, home: res.home, dir: res.home, host: res.host, port: res.port, username: res.username, savedId: res.saved && res.saved.id };
+    S.connections = S.connections.filter((c) => c.id !== conn.id);
     S.connections.push(conn);
     S.remotes.set(res.id, conn);
     if (res.saved) toast('Koneksi tersimpan: ' + res.saved.name);
@@ -1164,7 +1202,8 @@
       const res = await api.dbConnect({ connectionId: id });
       if (!res.ok) { toast('Koneksi gagal: ' + (res.error || 'unknown')); return; }
       const conn = { id: res.id, type: 'db', label: res.label, protocol: res.protocol, host: res.host, port: res.port, username: res.username, savedId: id };
-      S.connections.push(conn);
+      S.connections = S.connections.filter((c) => c.id !== conn.id);
+    S.connections.push(conn);
       S.remotes.set(res.id, conn);
       renderTargetSelect();
       closeSavedConnections();
@@ -1179,6 +1218,7 @@
     const res = await api.connectSaved(id);
     if (!res.ok) { toast('Koneksi gagal: ' + (res.error || 'unknown')); return; }
     const conn = { id: res.id, type: res.type, label: res.label, home: res.home, dir: res.home, host: res.host, port: res.port, username: res.username, savedId: id };
+    S.connections = S.connections.filter((c) => c.id !== conn.id);
     S.connections.push(conn);
     S.remotes.set(res.id, conn);
     renderTargetSelect();
@@ -1286,6 +1326,15 @@
       });
       bar.appendChild(el);
     }
+    const maxBtn = document.createElement('button');
+    maxBtn.className = 'icon-btn tabbar-max';
+    maxBtn.id = 'editorMax';
+    maxBtn.type = 'button';
+    maxBtn.title = document.querySelector('.app').classList.contains('max-editor')
+      ? 'Kembalikan workspace developer' : 'Perbesar workspace developer (sembunyikan terminal)';
+    maxBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M4 4l6 6M20 20h-6M20 20v-6M20 20l-6-6"/></svg>';
+    maxBtn.addEventListener('click', () => toggleMaxAppClass('max-editor'));
+    bar.appendChild(maxBtn);
   }
 
   function setActiveSession(tab) {
@@ -1317,6 +1366,7 @@
     S.active = tab;
     S.editor.setSession(session);
     renderTabs();
+    updateWsWelcome();
     setTimeout(() => S.editor.focus(), 30);
   }
 
@@ -1329,6 +1379,7 @@
       setActiveSession(S.active);
     }
     renderTabs();
+    updateWsWelcome();
   }
 
   async function saveActive() {
@@ -1426,6 +1477,226 @@
     ]);
   }
 
+  // ---------- Command Palette ----------
+  const PALETTE_ICONS = {
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.6A8.6 8.6 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg>',
+    workspace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>',
+    models: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+    api: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    extensions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3h4v3a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4v-3a2 2 0 1 0-4 0v3h-4v-3a2 2 0 1 0-4 0v3H3v-4h3a2 2 0 1 0 0-4H3V6h3a2 2 0 1 0 4 0z"/></svg>',
+    folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    terminal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    panel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="15" y1="4" x2="15" y2="20"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+    conn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 12h2M16 12h2"/></svg>',
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 5l2 2M14 8l2 2"/></svg>'
+  };
+
+  let paletteItems = [];
+  let paletteIndex = 0;
+  let paletteOpen = false;
+
+  function paletteActions() {
+    const acts = [
+      { group: 'Navigasi', icon: 'chat', label: 'Buka Chat', run: () => switchView('chat') },
+      { group: 'Navigasi', icon: 'workspace', label: 'Buka Workspace Developer', run: () => switchView('workspace') },
+      { group: 'Navigasi', icon: 'models', label: 'Buka Daftar Model', run: () => switchView('models') },
+      { group: 'Navigasi', icon: 'api', label: 'Buka API & Snippet', run: () => switchView('api') },
+      { group: 'Navigasi', icon: 'extensions', label: 'Buka Extensions', run: () => switchView('extensions') },
+      { group: 'Aksi', icon: 'folder', label: 'Buka Folder…', run: () => openFolder() },
+      { group: 'Aksi', icon: 'folder', label: 'Clone Repository…', run: () => { const b = $('cloneRepo'); if (b) b.click(); } },
+      { group: 'Aksi', icon: 'terminal', label: 'Terminal Baru', run: () => newLocalTerminal(S.local.root) },
+      { group: 'Aksi', icon: 'key', label: 'Isi / Ganti API Key', run: () => openSettings() },
+      { group: 'Panel', icon: 'panel', label: 'Tampilkan / Sembunyikan Terminal', run: () => toggleTerminalPanel() },
+      { group: 'Panel', icon: 'panel', label: 'Tampilkan / Sembunyikan Agent', run: () => toggleAgentPanel() },
+      { group: 'Panel', icon: 'panel', label: 'Maksimalkan / Restores Terminal', hint: 'full width', run: () => toggleMaxAppClass('max-terminal') },
+      { group: 'Panel', icon: 'panel', label: 'Maksimalkan / Restores Workspace', hint: 'full width', run: () => toggleMaxAppClass('max-editor') },
+      { group: 'Panel', icon: 'panel', label: 'Maksimalkan / Restores Agent', hint: 'full width', run: () => toggleMaxAppClass('max-agent') }
+    ];
+    for (const m of S.models || []) {
+      acts.push({
+        group: 'Model', icon: 'models', label: 'Pakai model ' + (m.name || m.id), hint: m.id,
+        run: () => { setModel(m.id); toast('Model aktif: ' + (m.name || m.id)); }
+      });
+    }
+    for (const c of S.savedConnections || []) {
+      acts.push({
+        group: 'Koneksi', icon: 'conn', label: 'Hubungkan ' + c.name, hint: (c.protocol || '').toUpperCase() + ' · ' + c.host,
+        run: () => { switchView('workspace'); openSavedConnections(); }
+      });
+    }
+    acts.push({ group: 'Pengaturan', icon: 'settings', label: 'Pengaturan…', run: () => openSettings() });
+    return acts;
+  }
+
+  function paletteSearch(items, q) {
+    q = String(q || '').toLowerCase().trim();
+    if (!q) return items;
+    return items.filter((it) => (it.label + ' ' + (it.hint || '') + ' ' + it.group).toLowerCase().includes(q));
+  }
+
+  function updatePaletteActive() {
+    document.querySelectorAll('#paletteResults .palette-item').forEach((el, i) => {
+      el.classList.toggle('active', i === paletteIndex);
+    });
+    const active = document.querySelector('#paletteResults .palette-item.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderPaletteResults(query) {
+    const box = $('paletteResults');
+    const items = paletteSearch(paletteActions(), query);
+    paletteItems = items;
+    paletteIndex = 0;
+    box.innerHTML = '';
+    if (!items.length) {
+      box.innerHTML = '<div class="palette-empty">Tidak ada hasil untuk &quot;' + esc(query) + '&quot;</div>';
+      $('paletteCount').textContent = '';
+      return;
+    }
+    let lastGroup = '';
+    for (const it of items) {
+      if (it.group !== lastGroup) {
+        lastGroup = it.group;
+        const g = document.createElement('div');
+        g.className = 'palette-group';
+        g.textContent = it.group;
+        box.appendChild(g);
+      }
+      const btn = document.createElement('button');
+      btn.className = 'palette-item';
+      btn.innerHTML = '<span class="pi-icon">' + (PALETTE_ICONS[it.icon] || PALETTE_ICONS.panel) + '</span>' +
+        '<span class="pi-label">' + esc(it.label) + '</span>' +
+        (it.hint ? '<span class="pi-hint">' + esc(it.hint) + '</span>' : '');
+      btn.addEventListener('click', () => runPaletteItem(it));
+      btn.addEventListener('mouseenter', () => { paletteIndex = items.indexOf(it); updatePaletteActive(); });
+      box.appendChild(btn);
+    }
+    $('paletteCount').textContent = items.length + ' hasil';
+    updatePaletteActive();
+  }
+
+  function runPaletteItem(item) {
+    if (!item) return;
+    closePalette();
+    try { item.run(); } catch (err) { toast('Gagal: ' + (err && err.message ? err.message : err)); }
+  }
+
+  function openPalette() {
+    paletteOpen = true;
+    $('palette').classList.remove('hidden');
+    $('paletteInput').value = '';
+    renderPaletteResults('');
+    setTimeout(() => $('paletteInput').focus(), 20);
+  }
+
+  function closePalette() {
+    paletteOpen = false;
+    $('palette').classList.add('hidden');
+    $('paletteInput').blur();
+  }
+
+  function paletteKey(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); paletteIndex = Math.min(paletteIndex + 1, paletteItems.length - 1); updatePaletteActive(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); paletteIndex = Math.max(paletteIndex - 1, 0); updatePaletteActive(); }
+    else if (e.key === 'Enter') { e.preventDefault(); runPaletteItem(paletteItems[paletteIndex]); }
+    else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+  }
+
+  // ---------- Status bar ----------
+  function updateStatusBar() {
+    const sb = $('statusbar');
+    if (!sb) return;
+    // Target
+    const target = S.target || {};
+    let targetText = 'Belum ada folder';
+    let targetDot = '';
+    if (target.type === 'local') {
+      targetText = S.local.root ? ('Lokal · ' + S.local.root) : 'Belum ada folder';
+      targetDot = S.local.root ? 'ok' : '';
+    } else if (target.type === 'ssh' || target.type === 'ftp') {
+      const s = remoteSession();
+      targetText = s ? (s.label || 'Remote') : 'Remote tidak terhubung';
+      targetDot = s ? 'ok' : 'err';
+    } else if (target.type === 'db') {
+      targetText = 'Database';
+      targetDot = 'ok';
+    }
+    $('sbTargetText').textContent = targetText;
+    $('sbTargetDot').className = 'sb-dot ' + targetDot;
+    $('sbTargetText').title = targetText;
+    // Model
+    $('sbModelText').textContent = currentModel();
+    // Koneksi
+    const activeConn = (S.connections || []).find((c) => c.connected);
+    if (activeConn) {
+      $('sbConnText').textContent = (activeConn.label || 'Remote');
+      $('sbConnDot').className = 'sb-dot ok';
+    } else {
+      $('sbConnText').textContent = 'Lokal';
+      $('sbConnDot').className = 'sb-dot';
+    }
+    // Key
+    const hasKey = S.settings && S.settings.hasKey;
+    $('sbKeyText').textContent = hasKey ? ('Key •••• ' + (S.settings.keyHint || '')) : 'Key belum diisi';
+    $('sbKeyDot').className = 'sb-dot ' + (hasKey ? 'ok' : 'warn');
+    // Versi
+    $('sbUpdateText').textContent = 'v' + ((S.settings && S.settings.version) || '1.1.0');
+  }
+
+  // ---------- Hero (empty state) ----------
+  function updateChatHero() {
+    const hero = $('chatHero');
+    if (hero) hero.classList.toggle('hidden', (S.chat || []).length > 0);
+  }
+
+  function bindHero() {
+    document.querySelectorAll('[data-hero]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const act = btn.dataset.hero;
+        if (act === 'openFolder') openFolder();
+        else if (act === 'workspace') switchView('workspace');
+        else if (act === 'settings') openSettings();
+        else if (act === 'conn') { switchView('workspace'); openSavedConnections(); }
+        else if (act === 'models') switchView('models');
+      });
+    });
+    document.querySelectorAll('[data-ws]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const act = btn.dataset.ws;
+        if (act === 'openFolder') openFolder();
+        else if (act === 'clone') { const b = $('cloneRepo'); if (b) b.click(); }
+        else if (act === 'conn') openSavedConnections();
+        else if (act === 'terminal') newLocalTerminal(S.local.root);
+        else if (act === 'db') openSavedConnections();
+      });
+    });
+    document.querySelectorAll('[data-agent-prompt]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const input = $('agentInput');
+        if (!input) return;
+        input.value = btn.dataset.agentPrompt || '';
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      });
+    });
+  }
+
+  function updateWsWelcome() {
+    const w = $('wsWelcome');
+    if (!w) return;
+    const noRoot = !S.local.root;
+    const noTabs = (S.tabs || []).length === 0;
+    w.classList.toggle('hidden', !(noRoot || noTabs));
+    w.classList.toggle('compact', !noRoot && noTabs);
+    const p = w.querySelector('p');
+    if (p) {
+      p.textContent = noRoot
+        ? 'Buka folder atau clone repository untuk mulai. Editor kode, terminal, dan agent AI siap bekerja bersama.'
+        : 'Pilih file dari Explorer di kiri untuk mulai editing, atau buat file baru dari sana.';
+    }
+  }
+
   // ---------- Panel resize ----------
   function applySideWidth(width, persist) {
     const max = Math.max(200, Math.min(560, window.innerWidth - 620));
@@ -1447,20 +1718,39 @@
     try { S.editor && S.editor.resize(true); } catch {}
   }
 
+  function applyTermHeight(height, persist) {
+    const max = Math.max(140, window.innerHeight - 240);
+    const h = Math.max(80, Math.min(height, max));
+    S.ui.termHeight = h;
+    document.documentElement.style.setProperty('--term-height', h + 'px');
+    const pane = $('termPane');
+    if (pane) pane.classList.remove('collapsed');
+    if (persist) localStorage.setItem('sahabat.termHeight', String(h));
+    setTimeout(fitAll, 60);
+  }
+
   function bindResizers() {
-    const attach = (el, onDelta, onReset) => {
+    // onDelta(startValue, delta, persist) — startValue diambil SEKALI saat pointerdown
+    // agar perubahan 1:1 dengan gerakan mouse (tidak menumpuk).
+    const attach = (el, getStart, onDelta, onReset) => {
       if (!el) return;
       el.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         const startX = e.clientX;
+        const startVal = getStart();
         el.setPointerCapture(e.pointerId);
         document.body.classList.add('resizing');
-        const move = (ev) => onDelta(ev.clientX - startX);
+        let lastDelta = 0;
+        const move = (ev) => {
+          lastDelta = ev.clientX - startX;
+          onDelta(startVal, lastDelta, false);
+        };
         const finish = () => {
           el.removeEventListener('pointermove', move);
           el.removeEventListener('pointerup', finish);
           el.removeEventListener('pointercancel', finish);
           document.body.classList.remove('resizing');
+          onDelta(startVal, lastDelta, true);
         };
         el.addEventListener('pointermove', move);
         el.addEventListener('pointerup', finish);
@@ -1468,14 +1758,39 @@
       });
       el.addEventListener('dblclick', onReset);
     };
-    attach($('resizeLeft'), (delta) => {
-      const start = S.ui.sideWidth;
-      applySideWidth(start + delta, true);
+    attach($('resizeLeft'), () => S.ui.sideWidth, (start, delta, persist) => {
+      applySideWidth(start + delta, persist);
     }, () => applySideWidth(252, true));
-    attach($('resizeAgent'), (delta) => {
-      const start = S.ui.agentWidth;
-      applyAgentWidth(start - delta, true);
+    attach($('resizeAgent'), () => S.ui.agentWidth, (start, delta, persist) => {
+      applyAgentWidth(start - delta, persist);
     }, () => applyAgentWidth(344, true));
+    // Resizer tinggi terminal (vertikal)
+    const termEl = $('resizeTerm');
+    if (termEl) {
+      termEl.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        const startY = e.clientY;
+        const startH = S.ui.termHeight;
+        termEl.setPointerCapture(e.pointerId);
+        document.body.classList.add('resizing-term');
+        let lastDelta = 0;
+        const move = (ev) => {
+          lastDelta = ev.clientY - startY;
+          applyTermHeight(startH - lastDelta, false);
+        };
+        const finish = () => {
+          termEl.removeEventListener('pointermove', move);
+          termEl.removeEventListener('pointerup', finish);
+          termEl.removeEventListener('pointercancel', finish);
+          document.body.classList.remove('resizing-term');
+          applyTermHeight(startH - lastDelta, true);
+        };
+        termEl.addEventListener('pointermove', move);
+        termEl.addEventListener('pointerup', finish);
+        termEl.addEventListener('pointercancel', finish);
+      });
+      termEl.addEventListener('dblclick', () => applyTermHeight(220, true));
+    }
   }
 
   // ---------- Extensions ----------
@@ -2075,6 +2390,7 @@
     $('termPane').classList.toggle('closed', closed);
     $('openTerminal').classList.toggle('hidden', !closed);
     setTimeout(fitActiveTerm, 80);
+    updateTermFoot();
   }
 
   function showTermPane() { setTermPaneClosed(false); }
@@ -2083,6 +2399,66 @@
     const t = activeTerm();
     $('termLabel').textContent = t ? (t.kind === 'ssh' ? 'SSH · ' : '') + t.label : '';
     syncMenuTerminals();
+    updateTermFoot();
+  }
+
+  // ---------- Terminal: status bar + indikator bekerja (ala VS Code) ----------
+  function updateTermFoot() {
+    const foot = $('termFoot');
+    if (!foot) return;
+    const tab = activeTerm();
+    const dot = $('termFootDot');
+    const shellEl = $('termFootShell');
+    const cwdEl = $('termFootCwd');
+    const stateEl = $('termFootState');
+    if (!tab) {
+      dot.className = 'term-foot-dot';
+      shellEl.textContent = '';
+      cwdEl.textContent = '';
+      stateEl.textContent = '';
+      stateEl.className = 'term-foot-state';
+      return;
+    }
+    dot.className = 'term-foot-dot ' + tab.kind;
+    shellEl.textContent = tab.kind === 'ssh' ? 'ssh' : (tab.shellName || 'powershell');
+    cwdEl.textContent = tab.cwd || '';
+    cwdEl.title = tab.cwd || '';
+    const dead = (tab.kind === 'local' && tab.ptyId === null) || (tab.kind === 'ssh' && !tab.shellId);
+    if (dead) {
+      stateEl.textContent = 'berhenti';
+      stateEl.className = 'term-foot-state dead';
+    } else if (tab.busy) {
+      stateEl.textContent = 'bekerja';
+      stateEl.className = 'term-foot-state busy';
+    } else {
+      stateEl.textContent = 'siap';
+      stateEl.className = 'term-foot-state idle';
+    }
+  }
+
+  function markTermActivity(tab) {
+    if (!tab) return;
+    tab.lastActivity = Date.now();
+    const wasBusy = tab.busy;
+    tab.busy = true;
+    if (!wasBusy) {
+      const chip = document.querySelector('.term-tab[data-uid="' + tab.uid + '"]');
+      if (chip) {
+        const dot = chip.querySelector('.term-dot, .term-spinner');
+        if (dot) dot.outerHTML = '<span class="term-spinner"></span>';
+      }
+      updateTermFoot();
+    }
+    clearTimeout(tab.busyTimer);
+    tab.busyTimer = setTimeout(() => {
+      tab.busy = false;
+      const chip = document.querySelector('.term-tab[data-uid="' + tab.uid + '"]');
+      if (chip) {
+        const spin = chip.querySelector('.term-spinner');
+        if (spin) spin.outerHTML = '<span class="term-dot ' + tab.kind + '"></span>';
+      }
+      updateTermFoot();
+    }, 1500);
   }
 
   function syncMenuTerminals() {
@@ -2104,8 +2480,12 @@
     for (const tab of S.termTabs) {
       const chip = document.createElement('button');
       chip.className = 'term-tab' + (tab.uid === S.termActiveUid ? ' active' : '');
-      chip.title = (tab.kind === 'ssh' ? 'SSH · ' : 'Lokal · ') + tab.label;
-      chip.innerHTML = '<span class="term-dot ' + tab.kind + '"></span><span>' + esc(tab.label) + '</span><span class="term-tab-close" data-close="1">×</span>';
+      chip.dataset.uid = tab.uid;
+      chip.title = (tab.kind === 'ssh' ? 'SSH · ' : 'Lokal · ') + tab.label + (tab.cwd ? ' — ' + tab.cwd : '');
+      const dotOrSpin = tab.busy
+        ? '<span class="term-spinner"></span>'
+        : '<span class="term-dot ' + tab.kind + '"></span>';
+      chip.innerHTML = dotOrSpin + '<span>' + esc(tab.label) + '</span><span class="term-tab-close" data-close="1">×</span>';
       chip.addEventListener('click', (e) => {
         if (e.target && e.target.closest && e.target.closest('[data-close]')) { closeTerminalTab(tab.uid); return; }
         activateTerminalTab(tab.uid);
@@ -2153,11 +2533,11 @@
     return count ? base + ' #' + (count + 1) : base;
   }
 
-  function addLocalTab(ptyId, label) {
+  function addLocalTab(ptyId, label, cwd) {
     const uid = 't' + (++S.termSeq);
     const host = makeTermHost();
     const made = createXterm(host, true);
-    const tab = { uid, kind: 'local', ptyId, shellId: null, sessionId: null, label: label || 'Lokal', host, term: made.term, fit: made.fit };
+    const tab = { uid, kind: 'local', ptyId, shellId: null, sessionId: null, label: label || 'Lokal', cwd: cwd || '', host, term: made.term, fit: made.fit, busy: false, lastActivity: 0, busyTimer: null };
     made.term.onData((d) => { if (tab.ptyId) api.terminalInput(tab.ptyId, d); });
     made.term.onResize(({ cols, rows }) => { if (tab.ptyId) api.termResize(tab.ptyId, cols, rows); });
     S.termTabs.push(tab);
@@ -2166,11 +2546,11 @@
     return tab;
   }
 
-  function addSshTab(shellId, sessionId) {
+  function addSshTab(shellId, sessionId, cwd) {
     const uid = 't' + (++S.termSeq);
     const host = makeTermHost();
     const made = createXterm(host, false);
-    const tab = { uid, kind: 'ssh', ptyId: null, shellId, sessionId, label: sshTabLabel(sessionId), host, term: made.term, fit: made.fit };
+    const tab = { uid, kind: 'ssh', ptyId: null, shellId, sessionId, label: sshTabLabel(sessionId), cwd: cwd || '', host, term: made.term, fit: made.fit, busy: false, lastActivity: 0, busyTimer: null };
     made.term.onData((d) => { if (tab.shellId) api.remoteInput(tab.sessionId, tab.shellId, d); });
     made.term.onResize(({ cols, rows }) => { if (tab.shellId) api.remoteResize(tab.sessionId, tab.shellId, cols, rows); });
     S.termTabs.push(tab);
@@ -2184,8 +2564,10 @@
     const dir = cwd || S.local.root || undefined;
     const res = await api.startTerminal({ cwd: dir });
     if (!res.ok) { toast('Gagal membuka terminal: ' + (res.error || 'unknown')); return null; }
-    const tab = addLocalTab(res.id, dir ? (baseName(dir) || 'Lokal') : 'Lokal');
+    const tab = addLocalTab(res.id, dir ? (baseName(dir) || 'Lokal') : 'Lokal', res.cwd || dir || '');
+    tab.shellName = res.shell ? baseName(res.shell).replace(/\.exe$/i, '') : 'powershell';
     tab.term.writeln('SahabatMobile terminal - ' + (res.shell || 'shell'));
+    updateTermFoot();
     return tab;
   }
 
@@ -2195,7 +2577,7 @@
     showTermPane();
     const res = await api.remoteShell(sessionId, 120, 30);
     if (!res.ok) { toast('Gagal membuka shell SSH: ' + (res.error || 'unknown')); return null; }
-    const tab = addSshTab(res.shellId, sessionId);
+    const tab = addSshTab(res.shellId, sessionId, session ? (session.dir || session.home || '') : '');
     try {
       tab.fit.fit();
       api.remoteResize(sessionId, res.shellId, tab.term.cols, tab.term.rows);
@@ -2210,6 +2592,8 @@
     S.termTabs.splice(i, 1);
     try { if (tab.kind === 'local' && tab.ptyId) await api.stopTerminal(tab.ptyId); } catch { /* abaikan */ }
     try { if (tab.kind === 'ssh' && tab.sessionId && tab.shellId) await api.remoteCloseShell(tab.sessionId, tab.shellId); } catch { /* abaikan */ }
+    try { clearTimeout(tab.busyTimer); } catch { /* abaikan */ }
+    tab.busy = false;
     try { tab.term.dispose(); } catch { /* abaikan */ }
     try { tab.host.remove(); } catch { /* abaikan */ }
     if (S.termActiveUid === uid) {
@@ -2333,7 +2717,7 @@
   function toggleMaxAppClass(name) {
     const app = document.querySelector('.app');
     const on = !app.classList.contains(name);
-    app.classList.remove('max-explorer', 'max-agent', 'max-terminal');
+    app.classList.remove('max-explorer', 'max-agent', 'max-terminal', 'max-editor');
     $('termPane').classList.remove('max');
     if (on) {
       app.classList.add(name);
@@ -2351,8 +2735,31 @@
     el.innerHTML = html;
     const log = $('agentLog');
     log.appendChild(el);
+    trimAgentLog();
     agentScrollToEnd('auto');
     return el;
+  }
+
+  // Batasi riwayat pesan agent agar payload API tidak membengkak.
+  function trimAgentMessages(max = 40) {
+    const list = S.agent.messages;
+    if (!Array.isArray(list) || list.length <= max) return;
+    S.agent.messages = list.slice(-max);
+  }
+
+  // Batasi DOM agent agar tidak membengkak saat tugas panjang.
+  function trimAgentLog(max = 250) {
+    const log = $('agentLog');
+    const items = Array.from(log.children);
+    if (items.length <= max) return;
+    const removeCount = items.length - max;
+    for (let i = 0; i < removeCount; i++) items[i].remove();
+    if (!log.querySelector('.agent-trim-note')) {
+      const note = document.createElement('div');
+      note.className = 'agent-note agent-trim-note';
+      note.textContent = 'Riwayat lama disembunyikan untuk menjaga performa.';
+      log.insertBefore(note, log.firstChild);
+    }
   }
 
   function agentTargetPayload() {
@@ -2476,7 +2883,7 @@
         '<span class="agent-step-icon">' + meta.icon + '</span>' +
         '<span class="agent-step-title">' + esc(meta.label) + '</span>' +
         '<code class="agent-step-cmd" title="' + esc(toolArgsPreview(name, args)) + '">' + esc(toolArgsPreview(name, args)) + '</code>' +
-        '<span class="agent-step-state"><span class="spinner"></span></span>' +
+        '<span class="agent-step-state"><span class="arrow-spinner arrow-spinner--xs" role="status" aria-label="Menjalankan"><i></i><i></i><i></i><i></i><i></i></span></span>' +
       '</div>' +
       '<div class="agent-step-out hidden"></div>';
     $('agentLog').appendChild(el);
@@ -2653,6 +3060,7 @@
             break;
           }
         }
+        trimAgentMessages();
         if (stalled) {
           agentLog('<div class="agent-note">Terdeteksi perintah yang sama diulang 3x berturut-turut - agent berhenti agar tidak berputar tanpa hasil. Kirim instruksi yang berbeda untuk melanjutkan.</div>', 'ai');
           break;
@@ -2740,6 +3148,8 @@
   function chatAdd(role, text, images) {
     const empty = $('chat').querySelector('.empty');
     if (empty) empty.remove();
+    updateChatHero();
+    trimChat();
     const row = document.createElement('div');
     row.className = 'message ' + role;
     row.innerHTML = '<div class="avatar">' + (role === 'user' ? 'You' : role === 'error' ? '!' : 'AI') + '</div><div class="bubble"></div>';
@@ -2764,6 +3174,24 @@
     $('chat').appendChild(row);
     $('chat').scrollTop = $('chat').scrollHeight;
     return body;
+  }
+
+  // Batasi DOM & riwayat chat agar sesi panjang tetap ringan.
+  function trimChat(max = 120) {
+    const box = $('chat');
+    if (!box) return;
+    const msgs = Array.from(box.querySelectorAll('.message'));
+    if (msgs.length > max) {
+      const removeCount = msgs.length - max;
+      for (let i = 0; i < removeCount; i++) msgs[i].remove();
+      if (!box.querySelector('.chat-trim-note')) {
+        const note = document.createElement('div');
+        note.className = 'agent-note chat-trim-note';
+        note.textContent = 'Pesan lama disembunyikan untuk menjaga performa.';
+        box.insertBefore(note, box.firstChild);
+      }
+    }
+    if (Array.isArray(S.chat) && S.chat.length > max) S.chat = S.chat.slice(-max);
   }
 
   function persistChat() {
@@ -2881,6 +3309,11 @@
     S.chat.push({ role: 'user', content });
     chatAdd('user', text, images);
     const body = chatAdd('assistant', '');
+    body.innerHTML =
+      '<span class="agent-thinking-row">' +
+        '<span class="arrow-spinner agent-thinking-spinner" role="status" aria-label="Memikirkan"><i></i><i></i><i></i><i></i><i></i></span>' +
+        '<span class="agent-thinking-label">Memikirkan…</span>' +
+      '</span>';
     const requestId = 'req-' + Date.now();
     S.requestId = requestId;
     let full = '';
@@ -2934,13 +3367,22 @@
       box.innerHTML = '<p class="muted">' + (S.settings.hasKey ? 'Tidak ada model yang cocok.' : 'Isi API key dulu untuk memuat model.') + '</p>';
       return;
     }
+    const activeId = currentModel();
     for (const m of list) {
+      const isAktif = activeId === m.id;
+      const badges = [];
+      if (isAktif) badges.push('<span class="m-badge aktif">aktif</span>');
+      if (m.thinking) badges.push('<span class="m-badge">thinking</span>');
+      if (m.owner) badges.push('<span class="m-badge netral">' + esc(m.owner) + '</span>');
       const row = document.createElement('div');
-      row.className = 'model-row';
+      row.className = 'model-row' + (isAktif ? ' model-aktif' : '');
       row.innerHTML =
-        '<div class="model-info"><div class="model-name">' + esc(m.name || m.id) + '</div>' +
-        '<div class="model-id">' + esc(m.id) + (m.owner ? ' · ' + esc(m.owner) : '') + '</div></div>' +
-        '<div class="model-actions"><button class="ghost small use">Pakai</button><button class="ghost small copy">Salin</button></div>';
+        '<div class="model-info">' +
+          '<div class="model-name">' + esc(m.name || m.id) + '</div>' +
+          '<div class="model-id">' + esc(m.id) + '</div>' +
+          (badges.length ? '<div class="model-badges">' + badges.join('') + '</div>' : '') +
+        '</div>' +
+        '<div class="model-actions"><button class="ghost small use"' + (isAktif ? ' disabled' : '') + '>' + (isAktif ? 'Aktif' : 'Pakai') + '</button><button class="ghost small copy">Salin</button></div>';
       row.querySelector('.use').addEventListener('click', () => { setModel(m.id); toast('Model aktif: ' + m.id); });
       row.querySelector('.copy').addEventListener('click', async () => { await api.copyText(m.id); toast('ID disalin'); });
       box.appendChild(row);
@@ -3425,6 +3867,12 @@
 
     $('agentSend').addEventListener('click', sendAgent);
     $('agentStop').addEventListener('click', stopAgent);
+    $('agentClear').addEventListener('click', () => {
+      if (S.agent.busy) { toast('Tunggu agent selesai dulu.'); return; }
+      S.agent.messages = [];
+      $('agentLog').innerHTML = '<div class="agent-empty"><div class="agent-empty-title">Agent</div><p>Riwayat dibersihkan. Mulai tugas baru.</p></div>';
+      toast('Riwayat agent dibersihkan');
+    });
     document.querySelectorAll('.shortcut-help-btn').forEach((b) => b.addEventListener('click', openShortcutGuide));
     $('closeShortcut').addEventListener('click', () => $('shortcutModal').classList.add('hidden'));
     $('shortcutModal').addEventListener('click', (e) => { if (e.target.id === 'shortcutModal') $('shortcutModal').classList.add('hidden'); });
@@ -3486,8 +3934,23 @@
       fitAll();
       applySideWidth(S.ui.sideWidth, false);
       applyAgentWidth(S.ui.agentWidth, false);
+      applyTermHeight(S.ui.termHeight, false);
     });
     document.addEventListener('keydown', (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      const k = (e.key || '').toLowerCase();
+      // Command palette: Ctrl+K / Ctrl+P
+      if (mod && (k === 'k' || k === 'p')) {
+        e.preventDefault();
+        if (paletteOpen) closePalette(); else openPalette();
+        return;
+      }
+      if (paletteOpen) { paletteKey(e); return; }
+      // Shortcut panel (Ctrl+B sidebar, Ctrl+J agent, Ctrl+` terminal)
+      if (mod && k === 'b') { e.preventDefault(); toggleSidebarPanel(); return; }
+      if (mod && k === 'j') { e.preventDefault(); toggleAgentPanel(); return; }
+      if (mod && (e.key === '`' || k === '`')) { e.preventDefault(); toggleTerminalPanel(); return; }
+      if (mod && e.shiftKey && (e.key === '5' || k === '5')) { e.preventDefault(); toggleTerminalSplit(); return; }
       if (e.key === 'Escape') {
         hideContextMenu();
         if (!$('shortcutModal').classList.contains('hidden')) $('shortcutModal').classList.add('hidden');
@@ -3498,6 +3961,24 @@
         if (!$('settingsModal').classList.contains('hidden')) $('settingsModal').classList.add('hidden');
       }
     });
+
+    // Command palette bindings
+    if ($('paletteInput')) {
+      $('paletteInput').addEventListener('input', (e) => renderPaletteResults(e.target.value));
+      $('paletteInput').addEventListener('keydown', paletteKey);
+    }
+    if ($('palette')) {
+      $('palette').addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('palette-backdrop')) closePalette();
+      });
+    }
+    if ($('sbPaletteBtn')) $('sbPaletteBtn').addEventListener('click', openPalette);
+    if ($('topPalette')) $('topPalette').addEventListener('click', openPalette);
+    if ($('sbModel')) $('sbModel').addEventListener('click', () => switchView('models'));
+    if ($('sbTarget')) $('sbTarget').addEventListener('click', () => switchView('workspace'));
+    if ($('sbKey')) $('sbKey').addEventListener('click', openSettings);
+    if ($('sbUpdates')) $('sbUpdates').addEventListener('click', checkUpdates);
+    if ($('sbConn')) $('sbConn').addEventListener('click', () => { switchView('workspace'); openSavedConnections(); });
   }
 
   async function openFolder() {
@@ -3509,6 +3990,7 @@
     S.target = { type: 'local', id: null };
     renderTargetSelect();
     await ensureWorkspace();
+    updateWsWelcome();
     toast('Folder dibuka: ' + dirName(res.root));
   }
 
@@ -3517,6 +3999,7 @@
     bind();
     applySideWidth(S.ui.sideWidth, false);
     applyAgentWidth(S.ui.agentWidth, false);
+    applyTermHeight(S.ui.termHeight, false);
     await refreshExtensions();
     S.settings = await api.getSettings();
     $('agentThinking').value = (S.settings && S.settings.agentThinking) || 'default';
@@ -3530,6 +4013,14 @@
     await refreshSavedConnections();
     renderSnippet();
     updateThinkingAvailability();
+    renderTabs();
+    bindHero();
+    updateChatHero();
+    updateWsWelcome();
+    updateStatusBar();
+    if ($('statusbar')) $('statusbar').classList.remove('hidden');
+    if ($('crumbIcon')) $('crumbIcon').innerHTML = VIEW_ICONS[S.view || 'chat'] || '';
+    if ($('viewTitle')) $('viewTitle').textContent = VIEW_TITLES[S.view || 'chat'] || 'Chat';
 
     const agentLogEl = $('agentLog');
     agentLogEl.addEventListener('scroll', () => {
@@ -3564,19 +4055,22 @@
     api.onMenuEvent(handleMenuEvent);
     api.onTermData((d) => {
       for (const tab of S.termTabs) {
-        if (tab.kind === 'local' && tab.ptyId === d.id) { tab.term.write(d.data); break; }
+        if (tab.kind === 'local' && tab.ptyId === d.id) { tab.term.write(d.data); markTermActivity(tab); break; }
       }
     });
     api.onTermExit((d) => {
       const tab = S.termTabs.find((t) => t.kind === 'local' && t.ptyId === d.id);
       if (!tab) return;
       tab.ptyId = null;
+      tab.busy = false;
+      clearTimeout(tab.busyTimer);
       tab.term.writeln('\r\n[terminal berhenti, kode ' + d.code + ']');
       renderTermTabs();
+      updateTermFoot();
     });
     api.onRemoteData((d) => {
       for (const tab of S.termTabs) {
-        if (tab.kind === 'ssh' && tab.sessionId === d.id && tab.shellId === d.shellId) { tab.term.write(d.data); break; }
+        if (tab.kind === 'ssh' && tab.sessionId === d.id && tab.shellId === d.shellId) { tab.term.write(d.data); markTermActivity(tab); break; }
       }
     });
     api.onRemoteExit((d) => {

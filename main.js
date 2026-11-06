@@ -206,6 +206,21 @@ function writeSettings(data) {
   fs.writeFileSync(settingsFile(), JSON.stringify(data, null, 2), 'utf8');
 }
 
+function saveWorkspaceRoot(root) {
+  try {
+    const s = readSettings();
+    s.workspaceRoot = String(root || '');
+    writeSettings(s);
+  } catch { /* abaikan */ }
+}
+
+function restoreWorkspaceRoot() {
+  try {
+    const s = readSettings();
+    if (s.workspaceRoot && fs.existsSync(s.workspaceRoot)) workspaceRoot = s.workspaceRoot;
+  } catch { /* abaikan */ }
+}
+
 function getBaseUrl() {
   const s = readSettings();
   return (s.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '');
@@ -1704,26 +1719,46 @@ ipcMain.handle('db:connect', dbWrap(async (cfg) => {
   cfg = cfg || {};
   const kind = normalizeProfileProtocol(cfg.protocol || cfg.kind);
   if (!dbEngine.isDbProtocol(kind)) throw new Error('Tipe koneksi tidak didukung: ' + (cfg.protocol || ''));
-  // Hubungkan ulang profil tersimpan (untuk target dropdown).
+
+  let profile;
+  let savedId;
   if (cfg.connectionId) {
-    const profile = readConnectionProfile(String(cfg.connectionId));
+    profile = readConnectionProfile(String(cfg.connectionId));
     if (!profile) throw new Error('Koneksi tersimpan tidak ditemukan.');
-    const session = await dbEngine.createSession(profile);
-    const id = 'db' + (++dbSeq);
-    dbSessions.set(id, session);
-    updateConnectionLastConnected(profile.id);
-    return { ok: true, id, type: 'db', label: dbLabel(profile), protocol: profile.protocol, host: profile.host, port: profile.port, username: profile.username, savedId: profile.id };
+    savedId = profile.id;
+  } else {
+    profile = { ...cfg, kind, port: Number(cfg.port) || defaultPortOf(kind) };
   }
-  const session = await dbEngine.createSession({ ...cfg, kind });
+  const port = Number(profile.port) || defaultPortOf(kind);
+  const username = profile.username || profile.user || '';
+  const key = [profile.kind || kind, profile.host || '', port, profile.database || '', username, profile.filePath || ''].join('|');
+
+  // Cegah kebocoran sesi: pakai ulang koneksi database yang sama.
+  for (const [existingId, s] of dbSessions) {
+    if (s && s.__key === key) {
+      if (savedId) updateConnectionLastConnected(savedId);
+      return {
+        ok: true, id: existingId, type: 'db', label: dbLabel(profile),
+        protocol: profile.kind || kind, host: profile.host, port, username, savedId
+      };
+    }
+  }
+
+  const session = await dbEngine.createSession(profile);
+  try { session.__key = key; } catch { /* sesi tidak bisa ditempeli properti — dedup dilewati */ }
   const id = 'db' + (++dbSeq);
   dbSessions.set(id, session);
+  if (savedId) updateConnectionLastConnected(savedId);
   let saved = null;
-  if (cfg.saveConnection) saved = saveConnectionProfile({ ...cfg, protocol: kind, port: Number(cfg.port) || defaultPortOf(kind) });
+  if (!cfg.connectionId && cfg.saveConnection) {
+    saved = saveConnectionProfile({ ...profile, port });
+    savedId = saved.id;
+  }
   return {
     ok: true, id, type: 'db',
-    label: dbLabel({ ...cfg, protocol: kind, port: Number(cfg.port) || defaultPortOf(kind) }),
-    protocol: kind, host: cfg.host, port: Number(cfg.port) || defaultPortOf(kind), username: cfg.user || cfg.username || '',
-    savedId: saved ? saved.id : undefined,
+    label: dbLabel(profile),
+    protocol: profile.kind || kind, host: profile.host, port, username,
+    savedId
   };
 }));
 
@@ -2024,6 +2059,8 @@ async function buildTree(dir, depth) {
 
 function localShell() {
   if (process.platform === 'win32') {
+    const pwsh = 'C:\\Program Files\\PowerShell\\7\\pwsh.exe';
+    if (fs.existsSync(pwsh)) return { file: pwsh, args: ['-NoLogo', '-NoProfile'] };
     return { file: 'powershell.exe', args: ['-NoLogo', '-NoProfile'] };
   }
   return { file: process.env.SHELL || '/bin/bash', args: ['-i'] };
@@ -2377,6 +2414,7 @@ async function fastRename(srcSession, srcPath, dstSession, dstPath) {
 
 app.whenReady().then(() => {
   storedKey = loadKey();
+  restoreWorkspaceRoot();
   buildAppMenu();
   createWindow();
   app.on('activate', () => {
@@ -2852,6 +2890,7 @@ ipcMain.handle('dialog:openFolder', async (event) => {
   const result = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
   if (result.canceled || !result.filePaths.length) return { ok: false };
   workspaceRoot = result.filePaths[0];
+  saveWorkspaceRoot(workspaceRoot);
   return { ok: true, root: workspaceRoot, tree: await buildTree(workspaceRoot, 0) };
 });
 
@@ -2887,10 +2926,12 @@ ipcMain.handle('repo:clone', async (event, payload) => {
   });
   if (result.code !== 0) return { ok: false, error: result.log.slice(-2000) || 'git clone gagal.' };
   workspaceRoot = target;
+  saveWorkspaceRoot(target);
   return { ok: true, root: target, tree: await buildTree(target, 0), log: result.log };
 });
 
 ipcMain.handle('workspace:info', async () => {
+  if (!workspaceRoot) restoreWorkspaceRoot();
   if (!workspaceRoot) return { ok: false };
   return { ok: true, root: workspaceRoot, tree: await buildTree(workspaceRoot, 0) };
 });
@@ -3089,7 +3130,8 @@ ipcMain.handle('entry:download', async (event, payload) => {
 });
 
 let ptyLib = null;
-try { ptyLib = require('node-pty'); } catch { ptyLib = null; }
+try { ptyLib = require('@lydell/node-pty'); } catch { try { ptyLib = require('node-pty'); } catch { ptyLib = null; } }
+if (!ptyLib) console.warn('[term] PTY tidak tersedia, memakai mode pipe (tanpa echo/prompt).');
 
 ipcMain.handle('term:start', async (event, payload) => {
   const id = 't' + (++termSeq);
@@ -3152,27 +3194,41 @@ ipcMain.handle('term:stop', (event, id) => {
 });
 
 async function openRemoteConnection(cfg) {
-  const id = 'r' + (++remoteSeq);
   const host = String(cfg.host || '').trim();
   const username = String(cfg.username || '').trim();
   if (!host || !username) return { ok: false, error: 'Host dan username wajib diisi.' };
   const protocol = cfg.protocol || 'sftp';
+  const port = Number(cfg.port) || (protocol === 'ftp' || protocol === 'ftps' ? 21 : 22);
+  const isFtp = protocol === 'ftp' || protocol === 'ftps';
 
-  if (protocol === 'ftp' || protocol === 'ftps') {
+  // Cegah kebocoran sesi: pakai ulang koneksi yang sama (tipe+host+user+port).
+  for (const [existingId, s] of remotes) {
+    if (s.type === (isFtp ? 'ftp' : 'ssh') && s.host === host && s.username === username && Number(s.port) === port) {
+      return {
+        ok: true, id: existingId, home: s.home, type: s.type,
+        label: (isFtp ? 'FTP ' : 'SSH ') + username + '@' + host,
+        host, port, username
+      };
+    }
+  }
+
+  const id = 'r' + (++remoteSeq);
+
+  if (isFtp) {
     const client = new FtpClient();
     client.ftp.verbose = false;
     try {
       await client.access({
         host,
-        port: Number(cfg.port) || 21,
+        port,
         user: username,
         password: String(cfg.password || ''),
         secure: protocol === 'ftps',
         secureOptions: protocol === 'ftps' ? { rejectUnauthorized: false } : undefined
       });
       const home = await client.pwd();
-      remotes.set(id, { type: 'ftp', client, home, shell: null });
-      return { ok: true, id, home, type: 'ftp', label: 'FTP ' + username + '@' + host, host, port: Number(cfg.port) || 21, username };
+      remotes.set(id, { type: 'ftp', client, home, shell: null, host, username, port });
+      return { ok: true, id, home, type: 'ftp', label: 'FTP ' + username + '@' + host, host, port, username };
     } catch (err) {
       try { client.close(); } catch {}
       return { ok: false, error: err.message };
@@ -3205,12 +3261,11 @@ async function openRemoteConnection(cfg) {
     });
     const sftp = await new Promise((resolve, reject) => client.sftp((err, s) => (err ? reject(err) : resolve(s))));
     const home = await new Promise((resolve) => sftp.realpath('.', (err, p) => resolve(err ? '.' : p)));
-    remotes.set(id, { type: 'ssh', client, sftp, home, shell: null });
+    remotes.set(id, { type: 'ssh', client, sftp, home, shell: null, host, username, port });
     client.on('close', () => {
       remotes.delete(id);
       send('remote:closed', { id });
     });
-    const port = Number(cfg.port) || 22;
     return { ok: true, id, home, type: 'ssh', label: 'SSH ' + username + '@' + host, host, port, username };
   } catch (err) {
     try { client.end(); } catch {}
@@ -3424,17 +3479,17 @@ ipcMain.handle('agent:listDir', async (event, payload) => {
 
 ipcMain.handle('agent:readFile', async (event, payload) => {
   try {
+    const ext = path.extname(String(payload.path || '')).toLowerCase();
+    const imageExts = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.ico', '.tiff', '.tif']);
+    if (imageExts.has(ext)) {
+      return { ok: false, error: 'File gambar (' + ext + ') tidak bisa dibaca sebagai teks. Model yang dipakai tidak mendukung input gambar. Untuk gambar, gunakan chat biasa (lampirkan gambar di chat) atau ganti ke model yang mendukung vision.' };
+    }
     const ctx = resolveAgentTarget(payload.target);
     if (ctx.kind === 'remote') {
       const content = await remoteRead(ctx.session, payload.path);
       return { ok: true, content: content.length > 120000 ? content.slice(0, 120000) + '\n...[dipotong]' : content };
     }
     const abs = resolveInRoot(payload.path);
-    const ext = path.extname(abs).toLowerCase();
-    const imageExts = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.ico', '.tiff', '.tif']);
-    if (imageExts.has(ext)) {
-      return { ok: false, error: 'File gambar (' + ext + ') tidak bisa dibaca sebagai teks. Model yang dipakai tidak mendukung input gambar. Untuk gambar, gunakan chat biasa (lampirkan gambar di chat) atau ganti ke model yang mendukung vision.' };
-    }
     const buf = await fs.promises.readFile(abs);
     const content = assertTextBuffer(buf, 'File');
     return { ok: true, path: abs, content: content.length > 120000 ? content.slice(0, 120000) + '\n...[dipotong]' : content };

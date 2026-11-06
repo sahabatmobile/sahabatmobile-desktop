@@ -154,14 +154,49 @@
 
     <div class="main">
       <header class="topbar">
-        <div class="title" id="viewTitle">Chat</div>
+        <div class="title-wrap">
+          <span class="crumb-icon" id="crumbIcon"></span>
+          <div class="title" id="viewTitle">Chat</div>
+        </div>
         <div class="controls">
+          <button class="topbar-palette" id="topPalette" title="Command Palette (Ctrl+K)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+            <span class="topbar-palette-kbd">Ctrl K</span>
+          </button>
           <button id="updateBadge" class="badge update hidden" title="Pembaruan tersedia">Update</button>
         </div>
       </header>
 
       <section id="view-chat" class="view">
-        <div class="chat" id="chat"></div>
+        <div class="chat" id="chat">
+          <div class="chat-hero" id="chatHero">
+            <div class="hero-logo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.8-.9L3 21l1.9-5.6A8.6 8.6 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg>
+            </div>
+            <h1>Halo, Sahabat</h1>
+            <p>Pintasan AI Gateway SahabatMobile. Tanya apa saja, kelola workspace Developer, dan sambungkan server VPS — semua dalam satu tempat.</p>
+            <div class="hero-actions">
+              <button class="hero-btn primary" data-hero="openFolder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                Buka Folder
+              </button>
+              <button class="hero-btn" data-hero="workspace">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>
+                Workspace Developer
+              </button>
+            </div>
+            <div class="hero-chips">
+              <button class="chip-action" data-hero="settings">Pengaturan API Key</button>
+              <button class="chip-action" data-hero="conn">Koneksi SSH / FTP</button>
+              <button class="chip-action" data-hero="models">Lihat Model</button>
+            </div>
+            <div class="hero-shortcuts">
+              <span><span class="kbd">Ctrl</span>+<span class="kbd">K</span> Command Palette</span>
+              <span><span class="kbd">Enter</span> Kirim</span>
+              <span><span class="kbd">Shift</span>+<span class="kbd">Enter</span> Baris baru</span>
+            </div>
+          </div>
+        </div>
         <div class="composer" id="composer">
           <div id="chatAttachments" class="attachments hidden"></div>
           <textarea id="chatInput" rows="2" placeholder="Tanya apa saja... (Enter kirim, Shift+Enter baris baru, tempel gambar dengan Ctrl+V)"></textarea>
@@ -186,7 +221,36 @@
           <button id="agentRail" class="side-rail side-rail-right hidden" title="Tampilkan panel agent"><span>AGENT</span></button>
           <div class="ws-editor">
             <div class="tabbar" id="tabbar"></div>
+            <div class="editor-wrap">
             <div id="editor" class="editor"></div>
+            <div class="ws-welcome hidden" id="wsWelcome">
+              <div class="hero-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>
+              </div>
+              <h1>Workspace Developer</h1>
+              <p>Buka folder atau clone repository untuk mulai. Editor kode, terminal, dan agent AI siap bekerja bersama.</p>
+              <div class="hero-actions">
+                <button class="hero-btn primary" data-ws="openFolder">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  Buka Folder
+                </button>
+                <button class="hero-btn" data-ws="clone">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+                  Clone Repository
+                </button>
+              </div>
+              <div class="hero-chips">
+                <button class="chip-action" data-ws="conn">Koneksi SSH / FTP</button>
+                <button class="chip-action" data-ws="terminal">Buka Terminal</button>
+                <button class="chip-action" data-ws="db">Koneksi Database</button>
+              </div>
+              <div class="hero-shortcuts">
+                <span><span class="kbd">Ctrl</span>+<span class="kbd">S</span> Simpan file</span>
+                <span><span class="kbd">Ctrl</span>+<span class="kbd">F</span> Cari</span>
+                <span><span class="kbd">Ctrl</span>+<span class="kbd">K</span> Command Palette</span>
+              </div>
+            </div>
+            </div>
             <div id="dbPane" class="db-pane hidden">
               <div class="db-toolbar">
                 <select id="dbDatabase" title="Database aktif"></select>
@@ -202,6 +266,7 @@
               </div>
               <div id="dbResult" class="db-result"></div>
             </div>
+            <div class="resizer-term" id="resizeTerm" title="Geser untuk mengatur tinggi terminal"></div>
             <div class="terminal-pane" id="termPane">
               <div class="pane-head">
                 <span>TERMINAL</span>
@@ -221,6 +286,14 @@
                   <span class="term-placeholder-sub">Klik + untuk membuka terminal</span>
                 </div>
               </div>
+              <div class="term-foot" id="termFoot">
+                <span class="term-foot-dot" id="termFootDot"></span>
+                <span class="term-foot-label" id="termFootShell">powershell</span>
+                <span class="term-foot-sep">·</span>
+                <span class="term-foot-cwd" id="termFootCwd"></span>
+                <span class="term-foot-spacer"></span>
+                <span class="term-foot-state" id="termFootState"></span>
+              </div>
             </div>
           </div>
 
@@ -238,12 +311,16 @@
                   <option value="xhigh">Thinking: XHigh</option>
                 </select>
                 <span id="agentTarget" class="agent-target">lokal</span>
+                <button id="agentClear" class="icon-btn" title="Bersihkan riwayat agent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
                 <button id="agentMax" class="icon-btn" title="Perbesar panel agent"><svg viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M4 4l6 6M20 20h-6M20 20v-6M20 20l-6-6"/></svg></button>
                 <button id="agentClose" class="icon-btn" title="Tutup panel agent"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
               </div>
             </div>
             <div id="agentLog" class="agent-log">
               <div class="agent-empty">
+                <div class="hero-logo" style="width:46px;height:46px;border-radius:13px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;color:#fff;"><path d="M9.5 2a7.5 7.5 0 0 0-5.6 12.6l-.9 4.4 4.4-.9A7.5 7.5 0 1 0 9.5 2z"/></svg>
+                </div>
                 <div class="agent-empty-title">Agent</div>
                 <p>Memahami tugas kompleks, memperbaiki bug, dan membuat project baru.</p>
                 <ul>
@@ -251,6 +328,12 @@
                   <li>Menjalankan perintah (dengan konfirmasi)</li>
                   <li>Bekerja di folder lokal, SSH/SFTP, atau FTP</li>
                 </ul>
+                <div class="agent-quick">
+                  <button class="chip-action" data-agent-prompt="Jelaskan struktur project ini">Jelaskan struktur project</button>
+                  <button class="chip-action" data-agent-prompt="Cari bug atau masalah di kode saya">Cari bug di kode</button>
+                  <button class="chip-action" data-agent-prompt="Buat file README.md yang informatif">Buat README.md</button>
+                  <button class="chip-action" data-agent-prompt="Jalankan perintah untuk memulai development server">Jalankan dev server</button>
+                </div>
               </div>
             </div>
             <button id="agentJump" class="agent-jump hidden" type="button" title="Lompat ke output terbaru">↓ Output terbaru</button>
@@ -319,6 +402,59 @@
       <section id="view-extensions" class="view hidden">
         <div id="extDetail" class="ext-detail"></div>
       </section>
+    </div>
+  </div>
+
+  <!-- ============ COMMAND PALETTE ============ -->
+  <div id="palette" class="palette hidden">
+    <div class="palette-backdrop"></div>
+    <div class="palette-box">
+      <div class="palette-input-row">
+        <span class="palette-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        </span>
+        <input id="paletteInput" placeholder="Ketik perintah, cari model, koneksi, atau pengaturan…" autocomplete="off" spellcheck="false" />
+        <span class="palette-kbd">esc</span>
+      </div>
+      <div id="paletteResults" class="palette-results"></div>
+      <div class="palette-footer">
+        <span><b>↑↓</b> pilih</span>
+        <span><b>↵</b> jalankan</span>
+        <span><b>esc</b> tutup</span>
+        <span class="palette-count" id="paletteCount"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STATUS BAR ============ -->
+  <div class="statusbar hidden" id="statusbar">
+    <div class="sb-left">
+      <button class="sb-item" id="sbTarget" title="Target aktif">
+        <span class="sb-dot" id="sbTargetDot"></span>
+        <span id="sbTargetText">Belum ada folder</span>
+      </button>
+      <button class="sb-item" id="sbModel" title="Model aktif">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span id="sbModelText">-</span>
+      </button>
+      <button class="sb-item sb-conn" id="sbConn" title="Koneksi remote">
+        <span class="sb-dot" id="sbConnDot"></span>
+        <span id="sbConnText">Lokal</span>
+      </button>
+    </div>
+    <div class="sb-right">
+      <button class="sb-item" id="sbKey" title="Status API key">
+        <span class="sb-dot" id="sbKeyDot"></span>
+        <span id="sbKeyText">Key belum diisi</span>
+      </button>
+      <button class="sb-item" id="sbUpdates" title="Pembaruan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+        <span id="sbUpdateText">v1.1.0</span>
+      </button>
+      <button class="sb-item" id="sbPaletteBtn" title="Buka Command Palette (Ctrl+K)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Perintah</span>
+      </button>
     </div>
   </div>
 
@@ -528,6 +664,7 @@
         <div class="shortcut-row"><span class="shortcut-keys">Ctrl + S</span><span>Simpan file di editor</span></div>
         <div class="shortcut-row"><span class="shortcut-keys">Ctrl + `</span><span>Buka / tutup panel terminal</span></div>
         <div class="shortcut-row"><span class="shortcut-keys">Ctrl + Shift + 5</span><span>Split terminal</span></div>
+        <div class="shortcut-row"><span class="shortcut-keys">Ctrl + K</span><span>Buka <strong>Command Palette</strong> — cari perintah, model, koneksi</span></div>
         <div class="shortcut-row"><span class="shortcut-keys">Ctrl + B</span><span>Tampilkan / sembunyikan sidebar</span></div>
         <div class="shortcut-row"><span class="shortcut-keys">Ctrl + J</span><span>Tampilkan / sembunyikan panel agent</span></div>
         <div class="shortcut-row"><span class="shortcut-keys">Ctrl + Alt + H</span><span>Buka panduan shortcut ini kapan saja</span></div>
