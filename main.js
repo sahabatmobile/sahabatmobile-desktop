@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, dialog, Menu, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -2429,14 +2429,174 @@ async function fastRename(srcSession, srcPath, dstSession, dstPath) {
   return false;
 }
 
-app.whenReady().then(() => {
+// ---------- Auth: wajib punya akun Sahabat ----------
+const AUTH_PARTITION = 'persist:sahabat-auth';
+const AUTH_FILE = path.join(app.getPath('userData'), 'auth.json');
+const AUTH_LOGIN_URL = 'https://www.sahabatmobile.com/ai/login';
+const AUTH_HOME_URL = 'https://www.sahabatmobile.com/ai';
+
+function authSession() {
+  return session.fromPartition(AUTH_PARTITION);
+}
+
+async function authVerify() {
+  try {
+    const ses = authSession();
+    const res = await ses.fetch(AUTH_HOME_URL);
+    const url = res.url || '';
+    if (url.includes('/login')) return false;
+    if (res.status !== 200) return false;
+    // Cadangan: kalau URL tidak jelas, periksa kontennya
+    const text = await res.text();
+    if (text.indexOf('Masuk ke Konsol') >= 0) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function authSave(email) {
+  const ses = authSession();
+  const cookies = await ses.cookies.get({ url: 'https://www.sahabatmobile.com' });
+  const data = {
+    email: String(email || ''),
+    cookies: cookies.map((c) => ({
+      name: c.name, value: c.value, domain: c.domain, path: c.path,
+      secure: !!c.secure, httpOnly: !!c.httpOnly, sameSite: c.sameSite || 'lax'
+    }))
+  };
+  const plain = JSON.stringify(data);
+  const payload = safeStorage.isEncryptionAvailable()
+    ? { enc: true, value: safeStorage.encryptString(plain).toString('base64') }
+    : { enc: false, value: Buffer.from(plain, 'utf8').toString('base64') };
+  fs.writeFileSync(AUTH_FILE, JSON.stringify(payload));
+}
+
+async function authLoad() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
+    const text = raw.enc ? safeStorage.decryptString(Buffer.from(raw.value, 'base64')) : Buffer.from(raw.value, 'base64').toString('utf8');
+    const data = JSON.parse(text);
+    const ses = authSession();
+    for (const c of data.cookies || []) {
+      try {
+        await ses.cookies.set({
+          url: 'https://www.sahabatmobile.com' + (c.path || '/'),
+          name: c.name, value: c.value, domain: c.domain, path: c.path,
+          secure: !!c.secure, httpOnly: !!c.httpOnly, sameSite: c.sameSite || 'lax'
+        });
+      } catch {}
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+async function authClear() {
+  try { fs.unlinkSync(AUTH_FILE); } catch {}
+  try { await authSession().clearStorageData({ storages: ['cookies'] }); } catch {}
+}
+
+let authWindow = null;
+
+function showAuthWindow() {
+  if (authWindow && !authWindow.isDestroyed()) return authWindow;
+  authWindow = new BrowserWindow({
+    width: 520,
+    height: 760,
+    title: 'Masuk — SahabatMobile',
+    autoHideMenuBar: true,
+    webPreferences: {
+      partition: AUTH_PARTITION,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  let email = '';
+  authWindow.webContents.on('console-message', (event, level, message) => {
+    if (String(message).indexOf('SAHABAT_EMAIL:') === 0) email = String(message).slice('SAHABAT_EMAIL:'.length);
+  });
+  const onNav = async (event, url) => {
+    if (!url) return;
+    if (url.indexOf(AUTH_HOME_URL) === 0 && url.indexOf('/login') === -1) {
+      authWindow.webContents.removeListener('did-navigate', onNav);
+      authWindow.webContents.removeListener('did-navigate-in-page', onNav);
+      try {
+        const stored = await authWindow.webContents.executeJavaScript("localStorage.getItem('sahabat.login.email') || ''");
+        if (stored) email = String(stored);
+      } catch {}
+      if (!email) {
+        try {
+          const res = await authSession().fetch(AUTH_HOME_URL);
+          const text = await res.text();
+          const m = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+          if (m) email = m[0];
+        } catch {}
+      }
+      try { await authSave(email); } catch {}
+      setTimeout(() => { closeAuthWindow(); createWindow(); }, 600);
+    }
+  };
+  authWindow.webContents.on('did-navigate', onNav);
+  authWindow.webContents.on('did-navigate-in-page', onNav);
+  authWindow.webContents.on('did-finish-load', () => {
+    authWindow.webContents.executeJavaScript(
+      "document.addEventListener('submit', function(){ var e=document.getElementById('email'); if(e){ try{ localStorage.setItem('sahabat.login.email', e.value); }catch(x){} } }, true);"
+    ).catch(() => {});
+  });
+  authWindow.loadURL(AUTH_LOGIN_URL);
+  authWindow.on('closed', () => { authWindow = null; });
+  return authWindow;
+}
+
+function closeAuthWindow() {
+  if (authWindow && !authWindow.isDestroyed()) authWindow.close();
+  authWindow = null;
+}
+
+ipcMain.handle('auth:check', async () => {
+  const data = await authLoad();
+  if (!data) return { ok: true, loggedIn: false, email: '' };
+  const loggedIn = await authVerify();
+  return { ok: true, loggedIn, email: data.email || '' };
+});
+
+ipcMain.handle('auth:logout', async () => {
+  await authClear();
+  for (const w of BrowserWindow.getAllWindows()) { try { w.close(); } catch {} }
+  setTimeout(() => showAuthWindow(), 300);
+  return { ok: true };
+});
+
+ipcMain.handle('auth:openExternal', (event, url) => {
+  if (/^https:\/\//i.test(String(url || ''))) shell.openExternal(String(url));
+  return { ok: true };
+});
+
+ipcMain.on('auth:loginSuccess', () => {
+  closeAuthWindow();
+  createWindow();
+});
+
+app.whenReady().then(async () => {
   storedKey = loadKey();
   restoreWorkspaceRoot();
   agentApprovalMode = readSettings().agentApproval || 'manual';
   buildAppMenu();
-  createWindow();
+  const auth = await authLoad();
+  const loggedIn = auth ? await authVerify() : false;
+  if (loggedIn) {
+    createWindow();
+  } else {
+    showAuthWindow();
+  }
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      authLoad().then((a) => (a ? authVerify() : false)).then((ok) => {
+        if (ok) createWindow(); else showAuthWindow();
+      });
+    }
   });
 });
 

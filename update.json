@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.4.0/SahabatMobile-Desktop-Setup-1.4.0.exe",
-  "notes": "Marketplace plugin fungsional: hubungkan account sendiri (Cloudflare, Facebook, Instagram, TikTok, YouTube), tes koneksi, dan tool agent. Logo window/taskbar memakai logo asli.",
+  "version": "1.5.0",
+  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.5.0/SahabatMobile-Desktop-Setup-1.5.0.exe",
+  "notes": "Wajib login dengan akun SahabatMobile (login via browser), session tersimpan terenkripsi, dan menu Akun di Pengaturan.",
   "mandatory": false
 }

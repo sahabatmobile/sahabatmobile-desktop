@@ -664,7 +664,14 @@
   <div id="settingsModal" class="modal hidden">
     <div class="modal-card">
       <h3>Pengaturan</h3>
-      <label>API Key SahabatMobile
+      <div class="update-box" style="margin-top:10px">
+        <div class="update-head">
+          <span>Akun Sahabat</span>
+          <button id="logoutBtn" class="ghost small" type="button">Keluar</button>
+        </div>
+        <div class="hint" id="accountEmail">Memeriksa…</div>
+      </div>
+      <label style="margin-top:14px">API Key SahabatMobile
         <input id="apiKeyInput" type="password" placeholder="sk-..." autocomplete="off" />
       </label>
       <p class="hint">Key disimpan terenkripsi di perangkat ini. Belum punya? Ambil di halaman API Keys / Plan Details akun SahabatMobile.</p>

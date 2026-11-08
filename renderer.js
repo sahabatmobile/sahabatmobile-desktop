@@ -5102,6 +5102,13 @@
     if (S.update && S.update.hasUpdate) {
       setUpdateStatus('Versi baru ' + S.update.latest + ' tersedia (sekarang v' + S.update.current + ').');
     }
+    // Akun Sahabat
+    $('accountEmail').textContent = 'Memeriksa…';
+    api.authCheck().then((r) => {
+      $('accountEmail').textContent = (r && r.loggedIn)
+        ? ('Masuk sebagai ' + (r.email || 'akun Sahabat'))
+        : 'Belum masuk.';
+    }).catch(() => { $('accountEmail').textContent = 'Belum masuk.'; });
     $('settingsModal').classList.remove('hidden');
     setTimeout(() => $('apiKeyInput').focus(), 50);
   }
@@ -5318,6 +5325,10 @@
     document.querySelectorAll('.openSettings').forEach((btn) => btn.addEventListener('click', openSettings));
     $('cancelSettings').addEventListener('click', () => $('settingsModal').classList.add('hidden'));
     $('saveSettings').addEventListener('click', saveSettings);
+    $('logoutBtn').addEventListener('click', async () => {
+      if (!confirm('Keluar dari akun Sahabat?')) return;
+      await api.authLogout();
+    });
     $('openPreferences').addEventListener('click', () => {
       $('settingsModal').classList.add('hidden');
       openOnboarding();

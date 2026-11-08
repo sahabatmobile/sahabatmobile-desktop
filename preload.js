@@ -61,6 +61,9 @@ contextBridge.exposeInMainWorld('sahabat', {
   pluginTest: (id) => ipcRenderer.invoke('plugins:test', id),
   pluginCall: (id, action, params) => ipcRenderer.invoke('plugins:call', id, action, params),
 
+  authCheck: () => ipcRenderer.invoke('auth:check'),
+  authLogout: () => ipcRenderer.invoke('auth:logout'),
+
   listModels: () => ipcRenderer.invoke('models:list'),
   startChat: (payload) => ipcRenderer.invoke('chat:start', payload),
   abortChat: (requestId) => ipcRenderer.invoke('chat:abort', requestId),
