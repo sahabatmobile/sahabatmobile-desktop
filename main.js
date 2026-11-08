@@ -2472,6 +2472,38 @@ ipcMain.handle('settings:copyKey', () => {
   return { ok: true };
 });
 
+ipcMain.handle('weather:get', async (event, payload) => {
+  const lat = Number(payload && payload.lat);
+  const lon = Number(payload && payload.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { ok: false, error: 'Koordinat tidak valid.' };
+  try {
+    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current_weather=true&timezone=auto');
+    const data = await res.json();
+    if (!data || !data.current_weather) return { ok: false, error: 'Respons cuaca tidak valid.' };
+    return { ok: true, current: data.current_weather };
+  } catch (err) {
+    return { ok: false, error: 'Gagal memuat cuaca: ' + ((err && err.message) || err) };
+  }
+});
+
+ipcMain.handle('settings:readVsCode', () => {
+  const appData = app.getPath('appData');
+  const home = app.getPath('home');
+  const candidates = [
+    path.join(appData, 'Code', 'User', 'settings.json'),
+    path.join(appData, 'Code - Insiders', 'User', 'settings.json'),
+    path.join(appData, 'VSCodium', 'User', 'settings.json'),
+    path.join(home, 'Library', 'Application Support', 'Code', 'User', 'settings.json')
+  ];
+  for (const p of candidates) {
+    try {
+      const raw = fs.readFileSync(p, 'utf8');
+      return { ok: true, path: p, content: raw };
+    } catch { /* coba lokasi berikutnya */ }
+  }
+  return { ok: false, error: 'VS Code settings tidak ditemukan.' };
+});
+
 // ---------- Auto-update ----------
 
 function normalizeReleaseVersion(value) {
@@ -3562,7 +3594,7 @@ ipcMain.handle('agent:writeFile', async (event, payload) => {
   }
 });
 
-const RISKY_COMMAND_RE = /\b(rm|rmdir|del|erase|format|mkfs|dd|shutdown|reboot|kill|taskkill|reg\s+delete|net\s+user|sudo|chmod|chown|git\s+reset|git\s+clean|git\s+push|npm\s+(install|i|ci|publish)|pnpm\s+add|yarn\s+add|pip\s+install|apt(?:-get)?\s+install|yum\s+install|dnf\s+install|brew\s+install|winget\s+install|choco\s+install|docker\s+rm|docker\s+rmi|kubectl\s+delete)\b/i;
+const RISKY_COMMAND_RE = /\b(rm|rmdir|del|erase|format|mkfs|dd|shutdown|reboot|kill|taskkill|reg\s+delete|net\s+user|sudo|chmod|chown|git\s+reset|git\s+clean|git\s+push|npm\s+(install|i|ci|publish)|pnpm\s+add|yarn\s+add|pip\s+install|apt(?:-get)?\s+install|yum\s+install|dnf\s+install|brew\s+install|winget\s+install|choco\s+install|docker\s+rm|docker\s+rmi|kubectl\s+delete|ufw|firewall-cmd|iptables|nft|certbot|rndc|named-checkzone|named-compilezone|systemctl\s+(restart|stop|start|disable|enable))\b/i;
 
 function isRiskyCommand(cmd) {
   return RISKY_COMMAND_RE.test(String(cmd || ''));
@@ -3598,11 +3630,11 @@ function agentNeedsApproval(command, mode) {
   return 'yes';
 }
 
-ipcMain.handle('agent:runCommand', async (event, payload) => {
+async function executeAgentCommand(event, payload, command) {
   const ctx = resolveAgentTarget(payload.target);
   const win = BrowserWindow.fromWebContents(event.sender);
   const where = ctx.kind === 'remote' ? (ctx.type === 'ssh' ? 'server SSH' : 'server FTP (tidak didukung)') : 'folder lokal';
-  const verdict = agentNeedsApproval(String(payload.command || ''), payload.approval);
+  const verdict = agentNeedsApproval(command, payload.approval);
   if (verdict === 'deny') return { ok: true, denied: true, output: 'Perintah ditolak aturan Custom.' };
   if (!allowAgentCommands && !payload.allow && verdict === 'yes') {
     const answer = await dialog.showMessageBox(win, {
@@ -3612,7 +3644,7 @@ ipcMain.handle('agent:runCommand', async (event, payload) => {
       cancelId: 1,
       title: 'Agen menjalankan perintah',
       message: 'Agen ingin menjalankan perintah di ' + where + ':',
-      detail: String(payload.command || '').slice(0, 2000),
+      detail: String(command).slice(0, 2000),
       checkboxLabel: 'Izinkan agen menjalankan perintah selama sesi ini',
       checkboxChecked: false
     });
@@ -3621,15 +3653,176 @@ ipcMain.handle('agent:runCommand', async (event, payload) => {
   }
   if (ctx.kind === 'remote') {
     if (ctx.type !== 'ssh') return { ok: false, error: 'FTP tidak mendukung eksekusi perintah.' };
-    const result = await remoteCommand(ctx.session, String(payload.command || ''), payload.cwd, payload.timeoutMs);
+    const result = await remoteCommand(ctx.session, command, payload.cwd, payload.timeoutMs);
     return { ok: true, code: result.code, output: result.output };
   }
   if (!workspaceRoot) return { ok: false, error: 'Folder kerja belum dibuka.' };
   const cwd = payload.cwd ? resolveInRoot(payload.cwd) : workspaceRoot;
-  const result = await runShellCommand(String(payload.command || ''), cwd, payload.timeoutMs);
+  const result = await runShellCommand(command, cwd, payload.timeoutMs);
   return {
     ok: true,
     code: result.code,
     output: (result.stdout + (result.stderr ? '\n[stderr]\n' + result.stderr : '')).slice(0, 60000) || '(tanpa output)'
   };
+}
+
+ipcMain.handle('agent:runCommand', async (event, payload) => executeAgentCommand(event, payload, String(payload.command || '')));
+
+ipcMain.handle('agent:serverStatus', async (event, payload) => {
+  const cmd = "echo '=== UPTIME ==='; uptime; echo '=== MEMORY ==='; free -h; echo '=== DISK ==='; df -h; echo '=== SERVICES ==='; (systemctl list-units --type=service --state=running --no-pager --no-legend 2>/dev/null || service --status-all 2>/dev/null || echo 'n/a')";
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:firewallStatus', async (event, payload) => {
+  const cmd = "(ufw status verbose 2>/dev/null || firewall-cmd --list-all 2>/dev/null || iptables -L -n 2>/dev/null || nft list ruleset 2>/dev/null || echo 'Firewall tidak dikenali')";
+  return executeAgentCommand(event, payload, cmd);
+});
+
+function normalizePortProto(payload) {
+  const port = String(payload.port || '').trim();
+  if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535) return { error: 'Port tidak valid: ' + port };
+  const proto = String(payload.proto || 'tcp').toLowerCase();
+  if (proto !== 'tcp' && proto !== 'udp') return { error: 'Protokol tidak valid: ' + proto };
+  return { port, proto };
+}
+
+ipcMain.handle('agent:firewallAllow', async (event, payload) => {
+  const v = normalizePortProto(payload);
+  if (v.error) return { ok: false, error: v.error };
+  const cmd = '(ufw allow ' + v.port + '/' + v.proto + ' 2>/dev/null) || (firewall-cmd --permanent --add-port=' + v.port + '/' + v.proto + ' 2>/dev/null && firewall-cmd --reload 2>/dev/null) || echo "Gagal: firewall tidak dikenali"';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:firewallDeny', async (event, payload) => {
+  const v = normalizePortProto(payload);
+  if (v.error) return { ok: false, error: v.error };
+  const cmd = '(ufw delete allow ' + v.port + '/' + v.proto + ' 2>/dev/null) || (firewall-cmd --permanent --remove-port=' + v.port + '/' + v.proto + ' 2>/dev/null && firewall-cmd --reload 2>/dev/null) || echo "Gagal: firewall tidak dikenali"';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:serviceRestart', async (event, payload) => {
+  const svc = String(payload.service || '').trim();
+  if (!/^[a-zA-Z0-9._@-]+$/.test(svc)) return { ok: false, error: 'Nama layanan tidak valid: ' + svc };
+  return executeAgentCommand(event, payload, 'systemctl restart ' + svc);
+});
+
+function normalizeDomain(value) {
+  const domain = String(value || '').trim().toLowerCase();
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return { error: 'Domain tidak valid: ' + domain };
+  return { domain };
+}
+
+function normalizeDnsType(value) {
+  const type = String(value || 'A').trim().toUpperCase();
+  if (!/^[A-Z]{1,5}$/.test(type)) return { error: 'Tipe record tidak valid: ' + type };
+  return { type };
+}
+
+ipcMain.handle('agent:dnsLookup', async (event, payload) => {
+  const d = normalizeDomain(payload.domain);
+  if (d.error) return { ok: false, error: d.error };
+  const t = normalizeDnsType(payload.type);
+  if (t.error) return { ok: false, error: t.error };
+  const cmd = 'dig +short ' + d.domain + ' ' + t.type + ' 2>/dev/null || nslookup -type=' + t.type + ' ' + d.domain + ' 2>/dev/null || echo "Tidak ada record"';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:dnsPropagation', async (event, payload) => {
+  const d = normalizeDomain(payload.domain);
+  if (d.error) return { ok: false, error: d.error };
+  const t = normalizeDnsType(payload.type);
+  if (t.error) return { ok: false, error: t.error };
+  const cmd = 'for r in 8.8.8.8 1.1.1.1 9.9.9.9; do echo "=== $r ==="; dig +short @' + '$r ' + d.domain + ' ' + t.type + ' 2>/dev/null || echo "n/a"; done';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:dnsZoneShow', async (event, payload) => {
+  const d = normalizeDomain(payload.domain);
+  if (d.error) return { ok: false, error: d.error };
+  const cmd = 'echo "=== named.conf ==="; grep -R "zone \\"' + d.domain + '\\"" /etc/bind/named.conf* 2>/dev/null; echo "=== zone files ==="; ls -1 /etc/bind/db.' + d.domain + ' /var/lib/bind/db.' + d.domain + ' /etc/bind/zones/db.' + d.domain + ' 2>/dev/null; echo "=== isi ==="; for f in /etc/bind/db.' + d.domain + ' /var/lib/bind/db.' + d.domain + ' /etc/bind/zones/db.' + d.domain + '; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; }; done';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+function validateDnsRecordValue(type, value) {
+  const v = String(value || '').trim();
+  if (type === 'A' && !/^(\d{1,3}\.){3}\d{1,3}$/.test(v)) return { error: 'IPv4 tidak valid: ' + v };
+  if (type === 'AAAA' && !/^[0-9a-fA-F:]+$/.test(v)) return { error: 'IPv6 tidak valid: ' + v };
+  if ((type === 'CNAME' || type === 'NS') && !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)) return { error: 'Domain tujuan tidak valid: ' + v };
+  if (type === 'MX' && !/^\d+\s+[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)) return { error: 'MX tidak valid (format: "prioritas domain"): ' + v };
+  if (type === 'TXT' && !v) return { error: 'TXT tidak boleh kosong' };
+  return { value: v };
+}
+
+function dnsZoneEditCmd(d, action, name, extra) {
+  const sedName = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const find = 'ZONE_FILE=$(for f in /etc/bind/db.' + d + ' /var/lib/bind/db.' + d + ' /etc/bind/zones/db.' + d + '; do [ -f "$f" ] && { echo "$f"; break; }; done); ' +
+    'if [ -z "$ZONE_FILE" ]; then echo "Zone file tidak ditemukan untuk ' + d + '"; exit 1; fi; ';
+  const mutate = action === 'add'
+    ? 'printf "%s\\t%s\\tIN\\t%s\\t%s\\n" "' + name + '" "' + extra.ttl + '" "' + extra.type + '" "' + extra.value + '" >> "$ZONE_FILE"; '
+    : 'sed -i -E "/^[[:space:]]*' + sedName + '([[:space:]]|$)/d" "$ZONE_FILE"; ';
+  const finish = 'SERIAL=$(grep -E "SOA" "$ZONE_FILE" | grep -Eo "[0-9]{10}" | head -1); ' +
+    'if [ -n "$SERIAL" ]; then NEW=$(printf "%010d" $((10#$SERIAL + 1))); sed -i "s/$SERIAL/$NEW/" "$ZONE_FILE"; fi; ' +
+    'named-checkzone ' + d + ' "$ZONE_FILE" && (rndc reload ' + d + ' 2>/dev/null || systemctl reload bind9 2>/dev/null || systemctl reload named 2>/dev/null) && echo "Selesai: zone ' + d + ' di-reload"';
+  return find + mutate + finish;
+}
+
+ipcMain.handle('agent:dnsZoneAdd', async (event, payload) => {
+  const d = normalizeDomain(payload.domain);
+  if (d.error) return { ok: false, error: d.error };
+  const name = String(payload.name || '').trim();
+  if (!/^[a-zA-Z0-9.*@-]+$/.test(name)) return { ok: false, error: 'Nama record tidak valid: ' + name };
+  const type = String(payload.type || '').toUpperCase();
+  if (!['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS'].includes(type)) return { ok: false, error: 'Tipe record tidak valid: ' + type };
+  const v = validateDnsRecordValue(type, payload.value);
+  if (v.error) return { ok: false, error: v.error };
+  const ttl = /^\d+$/.test(String(payload.ttl || '')) ? String(payload.ttl) : '3600';
+  const zoneValue = type === 'TXT' ? '"' + v.value.replace(/"/g, '\\"') + '"' : v.value;
+  return executeAgentCommand(event, payload, dnsZoneEditCmd(d.domain, 'add', name, { ttl, type, value: zoneValue }));
+});
+
+ipcMain.handle('agent:dnsZoneDelete', async (event, payload) => {
+  const d = normalizeDomain(payload.domain);
+  if (d.error) return { ok: false, error: d.error };
+  const name = String(payload.name || '').trim();
+  if (!/^[a-zA-Z0-9.*@-]+$/.test(name)) return { ok: false, error: 'Nama record tidak valid: ' + name };
+  const type = String(payload.type || '').toUpperCase();
+  if (type && !['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS'].includes(type)) return { ok: false, error: 'Tipe record tidak valid: ' + type };
+  return executeAgentCommand(event, payload, dnsZoneEditCmd(d.domain, 'delete', name, {}));
+});
+
+function pkgInstallCmd(pkg) {
+  return 'if command -v apt >/dev/null 2>&1; then apt update && DEBIAN_FRONTEND=noninteractive apt install -y ' + pkg.apt +
+    '; elif command -v dnf >/dev/null 2>&1; then dnf install -y ' + pkg.dnf +
+    '; elif command -v yum >/dev/null 2>&1; then yum install -y ' + pkg.yum +
+    '; else echo "Manajer paket tidak dikenali"; fi';
+}
+
+ipcMain.handle('agent:installNginx', async (event, payload) => {
+  const cmd = pkgInstallCmd({ apt: 'nginx', dnf: 'nginx', yum: 'nginx' }) +
+    '; systemctl enable --now nginx 2>/dev/null || true; systemctl status nginx --no-pager 2>/dev/null || true';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:installApache', async (event, payload) => {
+  const cmd = pkgInstallCmd({ apt: 'apache2', dnf: 'httpd', yum: 'httpd' }) +
+    '; systemctl enable --now apache2 2>/dev/null || systemctl enable --now httpd 2>/dev/null || true; systemctl status apache2 --no-pager 2>/dev/null || systemctl status httpd --no-pager 2>/dev/null || true';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:installMysql', async (event, payload) => {
+  const cmd = pkgInstallCmd({ apt: 'mysql-server', dnf: 'mysql-server', yum: 'mysql-server' }) +
+    '; systemctl enable --now mysql 2>/dev/null || systemctl enable --now mysqld 2>/dev/null || true; systemctl status mysql --no-pager 2>/dev/null || systemctl status mysqld --no-pager 2>/dev/null || true';
+  return executeAgentCommand(event, payload, cmd);
+});
+
+ipcMain.handle('agent:installSsl', async (event, payload) => {
+  const d = normalizeDomain(payload.domain);
+  if (d.error) return { ok: false, error: d.error };
+  const email = String(payload.email || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'Email tidak valid: ' + email };
+  const ws = String(payload.webserver || 'nginx').toLowerCase();
+  if (ws !== 'nginx' && ws !== 'apache') return { ok: false, error: 'Webserver tidak valid: ' + ws };
+  const cmd = pkgInstallCmd({ apt: 'certbot python3-certbot-nginx', dnf: 'certbot python3-certbot-nginx', yum: 'certbot python3-certbot-nginx' }) +
+    '; certbot --' + ws + ' -d ' + d.domain + ' --non-interactive --agree-tos -m ' + email + ' --redirect';
+  return executeAgentCommand(event, payload, cmd);
 });

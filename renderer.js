@@ -2,7 +2,7 @@
   'use strict';
 
   const api = window.sahabat;
-  const VIEW_TITLES = { chat: 'Chat', workspace: 'Workspace Developer', models: 'Model', api: 'API & Snippet', extensions: 'Extensions' };
+  const VIEW_TITLES = { chat: 'Chat', workspace: 'Workspace Developer', models: 'Model', api: 'API & Snippet', extensions: 'Extensions', marketplace: 'Marketplace', desktop: 'Desktop' };
   const RING_DOTS = '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>';
   const EXT_MODES = {};
   const MODE_MAP = {
@@ -60,6 +60,180 @@
           required: ['command']
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'server_status',
+        description: 'Cek status server: uptime, load, memory, disk, dan layanan yang berjalan. Khusus server (SSH).',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'firewall_status',
+        description: 'Cek status firewall dan daftar port yang terbuka. Khusus server (SSH).',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'firewall_allow',
+        description: 'Buka port di firewall server. Akan dikonfirmasi pengguna.',
+        parameters: {
+          type: 'object',
+          properties: {
+            port: { type: 'string', description: 'Nomor port, mis. 8080' },
+            proto: { type: 'string', description: 'Protokol: tcp atau udp (default tcp)' }
+          },
+          required: ['port']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'firewall_deny',
+        description: 'Tutup port di firewall server. Akan dikonfirmasi pengguna.',
+        parameters: {
+          type: 'object',
+          properties: {
+            port: { type: 'string', description: 'Nomor port, mis. 8080' },
+            proto: { type: 'string', description: 'Protokol: tcp atau udp (default tcp)' }
+          },
+          required: ['port']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'service_restart',
+        description: 'Restart layanan (service) di server, mis. nginx, mysql, apache2. Akan dikonfirmasi pengguna.',
+        parameters: {
+          type: 'object',
+          properties: { service: { type: 'string', description: 'Nama layanan, mis. nginx' } },
+          required: ['service']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'dns_lookup',
+        description: 'Query DNS records untuk domain (A, AAAA, CNAME, MX, TXT, NS). Khusus server.',
+        parameters: {
+          type: 'object',
+          properties: {
+            domain: { type: 'string', description: 'Nama domain, mis. example.com' },
+            type: { type: 'string', description: 'Tipe record: A, AAAA, CNAME, MX, TXT, NS (default A)' }
+          },
+          required: ['domain']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'dns_propagation',
+        description: 'Cek propagasi DNS ke resolver publik (Google, Cloudflare, Quad9).',
+        parameters: {
+          type: 'object',
+          properties: {
+            domain: { type: 'string', description: 'Nama domain' },
+            type: { type: 'string', description: 'Tipe record (default A)' }
+          },
+          required: ['domain']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'dns_zone_show',
+        description: 'Baca record DNS dari zone file BIND lokal di server.',
+        parameters: {
+          type: 'object',
+          properties: { domain: { type: 'string', description: 'Nama domain/zone' } },
+          required: ['domain']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'dns_zone_add',
+        description: 'Tambah record DNS ke zone file BIND lokal (update serial + reload).',
+        parameters: {
+          type: 'object',
+          properties: {
+            domain: { type: 'string', description: 'Domain/zone, mis. example.com' },
+            name: { type: 'string', description: 'Nama record, mis. www (atau @ / *)' },
+            type: { type: 'string', description: 'Tipe: A, AAAA, CNAME, MX, TXT, NS' },
+            value: { type: 'string', description: 'Nilai record' },
+            ttl: { type: 'string', description: 'TTL (default 3600)' }
+          },
+          required: ['domain', 'name', 'type', 'value']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'dns_zone_delete',
+        description: 'Hapus record DNS dari zone file BIND lokal (update serial + reload).',
+        parameters: {
+          type: 'object',
+          properties: {
+            domain: { type: 'string' },
+            name: { type: 'string', description: 'Nama record yang akan dihapus' },
+            type: { type: 'string', description: 'Tipe record (opsional)' }
+          },
+          required: ['domain', 'name']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'install_nginx',
+        description: 'Install Nginx di server (deteksi distro apt/dnf/yum) dan jalankan servisnya.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'install_apache',
+        description: 'Install Apache di server (apt: apache2, dnf/yum: httpd) dan jalankan servisnya.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'install_mysql',
+        description: 'Install MySQL/MariaDB di server dan jalankan servisnya.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'install_ssl',
+        description: 'Install Certbot dan membuat sertifikat SSL Let\'s Encrypt untuk domain.',
+        parameters: {
+          type: 'object',
+          properties: {
+            domain: { type: 'string', description: 'Domain, mis. example.com' },
+            email: { type: 'string', description: 'Email untuk pendaftaran Let\'s Encrypt' },
+            webserver: { type: 'string', description: 'nginx atau apache (default nginx)' }
+          },
+          required: ['domain', 'email']
+        }
+      }
     }
   ];
 
@@ -67,8 +241,12 @@
     settings: { baseUrl: 'https://www.sahabatmobile.com/api/v1', hasKey: false, keyHint: '' },
     models: [],
     model: localStorage.getItem('sahabat.model') || '',
-    view: localStorage.getItem('sahabat.view') || 'chat',
+    view: localStorage.getItem('sahabat.view') || 'desktop',
     chat: [],
+    chatMode: localStorage.getItem('sahabat.chat.mode') || 'auto',
+    customTasks: (() => { try { return JSON.parse(localStorage.getItem('sahabat.customTasks') || '[]'); } catch { return []; } })(),
+    installedSkills: (() => { try { return JSON.parse(localStorage.getItem('sahabat.skills') || '[]'); } catch { return []; } })(),
+    userMode: localStorage.getItem('sahabat.userMode') || 'developer',
     attachments: [],
     update: null,
     busy: false,
@@ -86,7 +264,7 @@
     tabs: [],
     active: null,
 
-    agent: { messages: [], busy: false, history: [] },
+    agent: { messages: [], busy: false, history: [], mode: localStorage.getItem('sahabat.agent.mode') || 'auto' },
     snippet: 'curl',
     cloneDir: null,
     mapTarget: null,
@@ -234,7 +412,9 @@
     workspace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>',
     models: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
     api: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
-    extensions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3h4v3a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4v-3a2 2 0 1 0-4 0v3h-4v-3a2 2 0 1 0-4 0v3H3v-4h3a2 2 0 1 0 0-4H3V6h3a2 2 0 1 0 4 0z"/></svg>'
+    extensions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3h4v3a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4v-3a2 2 0 1 0-4 0v3h-4v-3a2 2 0 1 0-4 0v3H3v-4h3a2 2 0 1 0 0-4H3V6h3a2 2 0 1 0 4 0z"/></svg>',
+    marketplace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+    desktop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>'
   };
 
   function switchView(view) {
@@ -244,6 +424,8 @@
     document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
     const target = $('view-' + view);
     if (target) target.classList.remove('hidden');
+    if (view === 'marketplace') renderMarketplace();
+    if (view === 'desktop') renderDesktop();
     $('viewTitle').textContent = VIEW_TITLES[view] || view;
     if ($('crumbIcon')) $('crumbIcon').innerHTML = VIEW_ICONS[view] || '';
     $('viewTitle').classList.toggle('hidden', view === 'workspace');
@@ -895,6 +1077,7 @@
         bindKey: { win: 'Ctrl-S', mac: 'Cmd-S' },
         exec: () => saveActive()
       });
+      applyEditorPreferences();
     }
     updateExplorerChrome();
     if (S.target.type === 'local') {
@@ -1305,6 +1488,21 @@
       showEditorMenu(e.clientX, e.clientY);
     });
     return editor;
+  }
+
+  function applyEditorPreferences() {
+    if (!S.editor) return;
+    const fontSize = localStorage.getItem('sahabat.editorFontSize') || '13';
+    const fontFamily = localStorage.getItem('sahabat.editorFontFamily') || 'Consolas, ui-monospace, monospace';
+    const tabSize = parseInt(localStorage.getItem('sahabat.editorTabSize'), 10) || 2;
+    const wrap = localStorage.getItem('sahabat.editorWordWrap') === '1';
+    try {
+      S.editor.setOptions({ fontSize: fontSize + 'px', fontFamily, tabSize, wrap });
+    } catch { /* abaikan */ }
+    const keymap = localStorage.getItem('sahabat.editorKeymap') || 'vscode';
+    try {
+      S.editor.setKeyboardHandler('ace/keyboard/' + keymap);
+    } catch { /* abaikan */ }
   }
 
   function tabKey(target, filePath) {
@@ -2807,12 +3005,7 @@
         '<li>Menjalankan perintah (dengan konfirmasi)</li>' +
         '<li>Bekerja di folder lokal, SSH/SFTP, atau FTP</li>' +
       '</ul>' +
-      '<div class="agent-quick">' +
-        '<button class="chip-action" data-agent-prompt="Jelaskan struktur project ini">Jelaskan struktur project</button>' +
-        '<button class="chip-action" data-agent-prompt="Cari bug atau masalah di kode saya">Cari bug di kode</button>' +
-        '<button class="chip-action" data-agent-prompt="Buat file README.md yang informatif">Buat README.md</button>' +
-        '<button class="chip-action" data-agent-prompt="Jalankan perintah untuk memulai development server">Jalankan dev server</button>' +
-      '</div>' +
+      '<div class="agent-quick">' + agentQuickActions() + '</div>' +
     '</div>';
   }
 
@@ -2961,9 +3154,9 @@
     return s ? (s.dir || s.home) : '(tidak terhubung)';
   }
 
-  function agentSystemPrompt() {
+  function agentSystemPrompt(text) {
     const targetLabel = S.target.type === 'local' ? 'folder lokal' : (S.target.type === 'ssh' ? 'server SSH' : 'server FTP');
-    return [
+    const lines = [
       'Anda adalah agen coding di dalam aplikasi SahabatMobile Desktop.',
       'Target explorer aktif: ' + targetLabel + '.',
       'Base path: ' + agentBasePath(),
@@ -2971,7 +3164,18 @@
       'Path bisa absolut sesuai base path atau relatif terhadapnya.',
       S.target.type === 'ftp' ? 'FTP tidak mendukung run_command; gunakan baca/tulis file saja.' : 'Gunakan run_command hanya bila perlu; pengguna akan mengonfirmasi.',
       'Kerjakan tugas langkah demi langkah, lalu jelaskan hasil akhir secara singkat dalam Bahasa Indonesia.'
-    ].join('\n');
+    ];
+    const mode = effectiveAgentMode(text);
+    if (mode === 'web') {
+      lines.unshift('MODE WEB DEV: Fokus membangun dan mengedit website.');
+      lines.splice(1, 0, 'Prioritaskan HTML/CSS/JS, struktur halaman, responsif, dan tampilan modern.');
+      lines.splice(2, 0, 'Jika perlu, jalankan perintah build/dev server, lalu jelaskan cara membukanya.');
+    } else if (mode === 'vps') {
+      lines.unshift('MODE VPS & SERVER: Fokus administrasi server.');
+      lines.splice(1, 0, 'Tangani firewall (ufw/iptables), DNS, SSH, Webmin, mail server, dan instalasi service (n8n, Hermes, OpenClaw, DeepSearch, OpenHand, WhatsApp API).');
+      lines.splice(2, 0, 'Untuk tindakan berisiko, jelaskan dampaknya dan minta konfirmasi.');
+    }
+    return lines.join('\n');
   }
 
   async function execTool(name, args) {
@@ -2982,6 +3186,41 @@
     if (name === 'run_command') {
       const mode = (S.settings && S.settings.agentApproval) || 'manual';
       return api.agentRunCommand(args.command, args.cwd, 120000, target, undefined, mode);
+    }
+    if (name === 'server_status') return api.agentServerStatus(target);
+    if (name === 'firewall_status') return api.agentFirewallStatus(target);
+    if (name === 'firewall_allow') {
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      return api.agentFirewallAllow(args.port, args.proto || 'tcp', target, mode);
+    }
+    if (name === 'firewall_deny') {
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      return api.agentFirewallDeny(args.port, args.proto || 'tcp', target, mode);
+    }
+    if (name === 'service_restart') {
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      return api.agentServiceRestart(args.service, target, mode);
+    }
+    if (name === 'dns_lookup') return api.agentDnsLookup(args.domain, args.type || 'A', target);
+    if (name === 'dns_propagation') return api.agentDnsPropagation(args.domain, args.type || 'A', target);
+    if (name === 'dns_zone_show') return api.agentDnsZoneShow(args.domain, target);
+    if (name === 'dns_zone_add') {
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      return api.agentDnsZoneAdd(args.domain, args.name, args.type, args.value, args.ttl, target, mode);
+    }
+    if (name === 'dns_zone_delete') {
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      return api.agentDnsZoneDelete(args.domain, args.name, args.type, target, mode);
+    }
+    if (name === 'install_nginx' || name === 'install_apache' || name === 'install_mysql') {
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      if (name === 'install_nginx') return api.agentInstallNginx(target, mode);
+      if (name === 'install_apache') return api.agentInstallApache(target, mode);
+      return api.agentInstallMysql(target, mode);
+    }
+    if (name === 'install_ssl') {
+      const mode = (S.settings && S.settings.agentApproval) || 'manual';
+      return api.agentInstallSsl(args.domain, args.email, args.webserver || 'nginx', target, mode);
     }
     return { ok: false, error: 'Tool tidak dikenal: ' + name };
   }
@@ -3175,15 +3414,17 @@
     if (!S.settings.hasKey) { openSettings(); return; }
     if (S.target.type === 'local' && !S.local.root) { toast('Buka folder kerja dulu.'); return; }
     if (S.target.type !== 'local' && !remoteSession()) { toast('Koneksi remote tidak aktif.'); return; }
+    rememberInput('agent', text);
     stopVoiceChat();
     input.value = '';
+    updateAgentModeChip();
     S.agent.busy = true;
     $('agentSend').classList.add('hidden');
     setAgentStatus('Memikirkan…');
     S.agent.messages.push({ role: 'user', content: text });
     agentLog('<div class="agent-user">' + esc(text) + '</div>', 'user');
 
-    const messages = [{ role: 'system', content: agentSystemPrompt() }, ...S.agent.messages];
+    const messages = [{ role: 'system', content: agentSystemPrompt(text) }, ...S.agent.messages];
     let loops = 0;
     let wrote = false;
     let lastSig = null;
@@ -3299,6 +3540,759 @@
   }
   // ---------- Chat ----------
   const CHAT_STORE = 'sahabat.chat.v1';
+
+  // ---------- Riwayat input (navigasi panah atas/bawah) ----------
+  const INPUT_HISTORY = {
+    chat: { key: 'sahabat.input.history.chat.v1', items: [], index: 0, draft: '' },
+    agent: { key: 'sahabat.input.history.agent.v1', items: [], index: 0, draft: '' }
+  };
+
+  function loadInputHistory(kind) {
+    const h = INPUT_HISTORY[kind];
+    if (!h) return;
+    try {
+      const raw = localStorage.getItem(h.key);
+      const arr = raw ? JSON.parse(raw) : [];
+      h.items = (Array.isArray(arr) ? arr : []).filter((x) => typeof x === 'string' && x.trim()).slice(-50);
+    } catch {
+      h.items = [];
+    }
+    h.index = h.items.length;
+    h.draft = '';
+  }
+
+  function saveInputHistory(kind) {
+    const h = INPUT_HISTORY[kind];
+    if (!h) return;
+    try { localStorage.setItem(h.key, JSON.stringify(h.items.slice(-50))); } catch { /* abaikan */ }
+  }
+
+  function rememberInput(kind, text) {
+    const h = INPUT_HISTORY[kind];
+    if (!h) return;
+    const t = String(text || '').trim();
+    if (!t) return;
+    if (h.items[h.items.length - 1] !== t) h.items.push(t);
+    if (h.items.length > 50) h.items = h.items.slice(-50);
+    h.index = h.items.length;
+    h.draft = '';
+    saveInputHistory(kind);
+  }
+
+  function bindInputHistory(textarea, kind) {
+    const h = INPUT_HISTORY[kind];
+    if (!textarea || !h) return;
+    loadInputHistory(kind);
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (!h.items.length) return;
+      // Hanya alihkan di baris pertama/terakhir agar editing multi-baris tetap normal.
+      const sameCaret = textarea.selectionStart === textarea.selectionEnd;
+      const pos = textarea.selectionStart;
+      const onFirstLine = sameCaret && textarea.value.slice(0, pos).indexOf('\n') === -1;
+      const onLastLine = sameCaret && textarea.value.slice(pos).indexOf('\n') === -1;
+      if (e.key === 'ArrowUp' && !onFirstLine) return;
+      if (e.key === 'ArrowDown' && !onLastLine) return;
+      e.preventDefault();
+      if (e.key === 'ArrowUp') {
+        if (h.index === h.items.length) h.draft = textarea.value;
+        if (h.index > 0) h.index -= 1;
+      } else if (h.index < h.items.length) {
+        h.index += 1;
+      }
+      textarea.value = h.index >= h.items.length ? (h.draft || '') : h.items[h.index];
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+    // Ketikan baru mengakhiri navigasi riwayat.
+    textarea.addEventListener('input', () => {
+      h.draft = textarea.value;
+      h.index = h.items.length;
+    });
+  }
+
+  // ---------- Mode & tujuan chat (persona + system prompt) ----------
+  const CHAT_MODES = [
+    {
+      id: 'auto', label: 'Otomatis', desc: 'Deteksi tujuan dari isi pesan',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>',
+      keywords: [], prompt: ''
+    },
+    {
+      id: 'web', label: 'Web Dev', desc: 'Desain & bangun website',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>',
+      keywords: ['website', 'web site', 'landing page', 'landingpage', 'situs', 'halaman', 'web dev', 'webdev', 'frontend', 'front-end', 'backend', 'back-end', 'html', 'css', 'javascript', 'react', 'vue', 'tailwind', 'responsif', 'responsive', 'portofolio', 'portfolio', 'blog', 'desain web', 'ui design', 'aplikasi web', 'tampilan'],
+      prompt: [
+        'Anda adalah spesialis Web Dev dalam aplikasi SahabatMobile Desktop.',
+        'Tugas Anda membantu merancang dan membangun website: struktur halaman, layout, HTML/CSS/JS, tampilan responsif, dan estetika modern.',
+        'Beri kode lengkap yang siap salin bila diminta, dan jelaskan keputusan desain secara singkat.',
+        'Utamakan hasil yang langsung bisa dipakai. Selalu jawab dalam Bahasa Indonesia.'
+      ].join('\n')
+    },
+    {
+      id: 'vps', label: 'VPS & Server', desc: 'Perbaikan, firewall, DNS, SSH, install service',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>',
+      keywords: ['vps', 'server', 'firewall', 'ufw', 'iptables', 'nftables', 'dns', 'domain', 'ssh', 'sshd', 'webmin', 'virtualmin', 'cpanel', 'plesk', 'hosting', 'nginx', 'apache', 'httpd', 'php-fpm', 'mysql', 'mariadb', 'postgres', 'postfix', 'dovecot', 'mail server', 'email server', 'certbot', 'systemd', 'systemctl', 'crontab', 'docker', 'n8n', 'hermes', 'openclaw', 'deepsearch', 'openhand', 'whatsapp api', 'linux', 'ubuntu', 'debian', 'centos', 'error server', 'server down', 'perbaikan server'],
+      prompt: [
+        'Anda adalah administrator server (VPS) dalam aplikasi SahabatMobile Desktop.',
+        'Tugas Anda membantu merawat dan mengelola server: perbaikan layanan, firewall (ufw/iptables), DNS, SSH, Webmin, mail server, serta instalasi dan konfigurasi service (n8n, Hermes, OpenClaw, DeepSearch, OpenHand, WhatsApp API, dan lainnya).',
+        'Beri perintah yang jelas dan aman, jelaskan risikonya, dan sarankan langkah verifikasi.',
+        'Untuk tindakan berisiko (menghapus data, mengubah firewall, restart layanan), jelaskan dampaknya dan minta konfirmasi.',
+        'Selalu jawab dalam Bahasa Indonesia.'
+      ].join('\n')
+    },
+    {
+      id: 'off', label: 'Nonaktif', desc: 'Tanpa mode khusus',
+      icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.5 5.5l13 13"/></svg>',
+      keywords: [], prompt: ''
+    }
+  ];
+
+  function chatModeById(id) {
+    return CHAT_MODES.find((m) => m.id === id) || CHAT_MODES[0];
+  }
+
+  function detectChatMode(text) {
+    const t = ' ' + String(text || '').toLowerCase() + ' ';
+    let best = 'auto';
+    let bestScore = 0;
+    for (const mode of CHAT_MODES) {
+      if (!mode.keywords || !mode.keywords.length) continue;
+      let score = 0;
+      for (const raw of mode.keywords) {
+        const kw = String(raw).toLowerCase().trim();
+        if (!kw) continue;
+        if (kw.indexOf(' ') !== -1) {
+          if (t.indexOf(kw) !== -1) score += 2;
+        } else {
+          const re = new RegExp('(^|[^a-z0-9])' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^a-z0-9]|$)');
+          if (re.test(t)) score += 1;
+        }
+      }
+      if (score > bestScore) { bestScore = score; best = mode.id; }
+    }
+    return best;
+  }
+
+  function effectiveChatMode(text) {
+    if (S.chatMode && S.chatMode !== 'auto') return S.chatMode;
+    return detectChatMode(text);
+  }
+
+  function setChatMode(modeId) {
+    S.chatMode = chatModeById(modeId).id;
+    try { localStorage.setItem('sahabat.chat.mode', S.chatMode); } catch { /* abaikan */ }
+    renderChatModePop();
+    updateChatModeChip();
+  }
+
+  function renderChatModePop() {
+    const list = $('chatModeList');
+    if (!list) return;
+    list.innerHTML = '';
+    for (const mode of CHAT_MODES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mode-opt' + (S.chatMode === mode.id ? ' active' : '');
+      btn.dataset.mode = mode.id;
+      btn.innerHTML =
+        '<span class="ao-icon">' + mode.icon + '</span>' +
+        '<span class="ao-text"><span class="ao-title">' + esc(mode.label) + '</span>' +
+        '<span class="ao-desc">' + esc(mode.desc) + '</span></span>' +
+        '<span class="ao-check">✓</span>';
+      btn.addEventListener('click', () => {
+        setChatMode(mode.id);
+        closeChatModePop();
+      });
+      list.appendChild(btn);
+    }
+    const label = $('chatModeBtnLabel');
+    if (label) label.textContent = S.chatMode === 'auto' ? 'Otomatis' : chatModeById(S.chatMode).label;
+    const btn = $('chatModeBtn');
+    if (btn) btn.classList.toggle('active', S.chatMode !== 'auto');
+  }
+
+  function updateChatModeChip() {
+    const chip = $('chatModeChip');
+    if (!chip) return;
+    const input = $('chatInput');
+    const mode = chatModeById(effectiveChatMode(input ? input.value : ''));
+    if (mode.id === 'auto' || mode.id === 'off') { chip.classList.add('hidden'); return; }
+    chip.classList.remove('hidden');
+    chip.classList.toggle('auto', S.chatMode === 'auto');
+    const icon = $('chatModeChipIcon');
+    if (icon) icon.innerHTML = mode.icon;
+    const label = $('chatModeChipLabel');
+    if (label) label.textContent = mode.label;
+  }
+
+  function openChatModePop() {
+    renderChatModePop();
+    const pop = $('chatModePop');
+    if (pop) pop.classList.remove('hidden');
+  }
+
+  function closeChatModePop() {
+    const pop = $('chatModePop');
+    if (pop) pop.classList.add('hidden');
+  }
+
+  // ---------- Mode Agent (Web Dev / VPS) ----------
+  function effectiveAgentMode(text) {
+    if (S.agent.mode === 'web' || S.agent.mode === 'vps' || S.agent.mode === 'off') return S.agent.mode;
+    return detectChatMode(text);
+  }
+
+  function setAgentMode(modeId) {
+    S.agent.mode = chatModeById(modeId).id;
+    try { localStorage.setItem('sahabat.agent.mode', S.agent.mode); } catch { /* abaikan */ }
+    renderAgentModePop();
+    updateAgentModeChip();
+    if ($('agentLog') && $('agentLog').querySelector('.agent-empty')) resetAgentLog();
+  }
+
+  function renderAgentModePop() {
+    const list = $('agentModeList');
+    if (!list) return;
+    list.innerHTML = '';
+    for (const mode of CHAT_MODES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mode-opt' + (S.agent.mode === mode.id ? ' active' : '');
+      btn.dataset.mode = mode.id;
+      btn.innerHTML =
+        '<span class="ao-icon">' + mode.icon + '</span>' +
+        '<span class="ao-text"><span class="ao-title">' + esc(mode.label) + '</span>' +
+        '<span class="ao-desc">' + esc(mode.desc) + '</span></span>' +
+        '<span class="ao-check">✓</span>';
+      btn.addEventListener('click', () => {
+        setAgentMode(mode.id);
+        closeAgentModePop();
+      });
+      list.appendChild(btn);
+    }
+    const label = $('agentModeBtnLabel');
+    if (label) label.textContent = S.agent.mode === 'auto' ? 'Otomatis' : chatModeById(S.agent.mode).label;
+    const btn = $('agentModeBtn');
+    if (btn) btn.classList.toggle('active', S.agent.mode !== 'auto');
+  }
+
+  function updateAgentModeChip() {
+    const chip = $('agentModeChip');
+    if (!chip) return;
+    const input = $('agentInput');
+    const mode = chatModeById(effectiveAgentMode(input ? input.value : ''));
+    if (mode.id === 'auto' || mode.id === 'off') { chip.classList.add('hidden'); return; }
+    chip.classList.remove('hidden');
+    chip.classList.toggle('auto', S.agent.mode === 'auto');
+    const icon = $('agentModeChipIcon');
+    if (icon) icon.innerHTML = mode.icon;
+    const label = $('agentModeChipLabel');
+    if (label) label.textContent = mode.label;
+  }
+
+  function openAgentModePop() {
+    renderAgentModePop();
+    const pop = $('agentModePop');
+    if (pop) pop.classList.remove('hidden');
+  }
+
+  function closeAgentModePop() {
+    const pop = $('agentModePop');
+    if (pop) pop.classList.add('hidden');
+  }
+
+  // ---------- Task per mode (Umum / Web Dev / VPS) ----------
+  const AGENT_TASKS = {
+    general: [
+      { label: 'Jelaskan struktur project', desc: 'Analisis struktur & arsitektur', prompt: 'Jelaskan struktur project ini secara singkat dan jelas.' },
+      { label: 'Cari bug di kode', desc: 'Temukan bug & masalah potensial', prompt: 'Cari bug atau masalah di kode saya, lalu sarankan perbaikannya.' },
+      { label: 'Buat README.md', desc: 'Dokumentasi project', prompt: 'Buat file README.md yang informatif untuk project ini.' },
+      { label: 'Jalankan dev server', desc: 'Start development server', prompt: 'Jalankan perintah untuk memulai development server, lalu jelaskan cara mengaksesnya.' }
+    ],
+    web: [
+      { label: 'Website (HTML/CSS/JS)', desc: 'Website statis multi-halaman', prompt: 'Buat project website baru (HTML/CSS/JS) di folder ini. Buat struktur folder dan file dasar (index.html, style.css, script.js), lalu jelaskan cara menjalankannya.' },
+      { label: 'Landing Page', desc: 'Halaman promosi responsif', prompt: 'Buat landing page baru yang responsif dan modern. Buat file HTML/CSS/JS-nya, lalu jelaskan cara membukanya.' },
+      { label: 'React (Vite)', desc: 'Aplikasi React modern', prompt: 'Buat project React baru (Vite) di folder ini. Setup struktur dasar, install dependencies, dan jalankan dev server.' },
+      { label: 'Node.js / Express', desc: 'API/backend sederhana', prompt: 'Buat project Node.js/Express baru di folder ini. Setup struktur dasar, package.json, dan cara menjalankannya.' },
+      { label: 'Python', desc: 'Script/backend Python', prompt: 'Buat project Python baru di folder ini. Setup struktur dasar, virtual environment, dan file utama.' },
+      { label: 'Jalankan dev server', desc: 'Start dev server & preview', prompt: 'Jalankan perintah untuk memulai development server, lalu jelaskan cara mengaksesnya.' }
+    ],
+    vps: [
+      { label: 'Cek status server', desc: 'Uptime, load, disk, memory', prompt: 'Cek status server: jalankan uptime, df -h, free -h, dan sebutkan layanan yang sedang berjalan. Laporkan hasilnya.' },
+      { label: 'Cek firewall', desc: 'Port & aturan aktif', prompt: 'Cek status firewall (ufw status atau iptables) dan sebutkan port yang terbuka.' },
+      { label: 'Buka port', desc: 'Tambah aturan firewall', prompt: 'Buka port di firewall. Tanyakan dulu port dan protokol yang dibutuhkan, konfirmasi, lalu jalankan.' },
+      { label: 'Update & upgrade', desc: 'Perbarui paket sistem', prompt: 'Update dan upgrade paket sistem. Konfirmasi dulu sebelum menjalankan, lalu laporkan hasilnya.' },
+      { label: 'Setting DNS', desc: 'Record A/CNAME/MX/dll.', prompt: 'Atur DNS server. Tanyakan dulu domain dan record (A/CNAME/MX/dll.) yang dibutuhkan, konfirmasi, lalu terapkan.' },
+      { label: 'Install Webmin', desc: 'Panel administrasi', prompt: 'Install Webmin di server ini, lalu jelaskan cara mengaksesnya dan langkah keamanan dasar.' },
+      { label: 'Install mail server', desc: 'Postfix/Dovecot', prompt: 'Install mail server (Postfix/Dovecot) di server ini, lalu jelaskan konfigurasi dasar dan cara mengamankannya.' },
+      { label: 'Install service lain', desc: 'n8n, Hermes, OpenClaw, dll.', prompt: 'Install sebuah service di server. Tanyakan dulu nama service yang dibutuhkan (mis. n8n, Hermes, OpenClaw, DeepSearch, OpenHand, WhatsApp API), lalu install dan konfigurasikan.' },
+      { label: 'Install Nginx', desc: 'Web server', prompt: 'Install Nginx di server ini (deteksi distro), jalankan dan enable servisnya, lalu laporkan cara verifikasinya.' },
+      { label: 'Install Apache', desc: 'Web server', prompt: 'Install Apache di server ini (deteksi distro), jalankan dan enable servisnya, lalu laporkan cara verifikasinya.' },
+      { label: 'Install MySQL', desc: 'Database server', prompt: 'Install MySQL/MariaDB di server ini (deteksi distro), jalankan dan enable servisnya, lalu jelaskan langkah pengamanan dasar.' },
+      { label: 'Install SSL', desc: 'Certbot / Let\'s Encrypt', prompt: 'Install Certbot dan buat sertifikat SSL Let\'s Encrypt. Tanyakan dulu domain, email, dan webserver (nginx/apache) yang dipakai.' },
+      { label: 'Tambah record DNS', desc: 'Zone BIND lokal', prompt: 'Tambah record DNS. Tanyakan dulu domain, nama record, tipe (A/CNAME/MX/TXT/dll.), dan nilai record, konfirmasi, lalu terapkan.' },
+      { label: 'Hapus record DNS', desc: 'Zone BIND lokal', prompt: 'Hapus record DNS. Tanyakan dulu domain dan nama record yang akan dihapus, konfirmasi, lalu terapkan.' }
+    ]
+  };
+
+  function agentTasksForMode() {
+    const mode = effectiveAgentMode($('agentInput') ? $('agentInput').value : '');
+    const base = mode === 'web' ? AGENT_TASKS.web : mode === 'vps' ? AGENT_TASKS.vps : AGENT_TASKS.general;
+    return base.concat(S.customTasks || []);
+  }
+
+  function agentTaskTitle() {
+    const mode = effectiveAgentMode($('agentInput') ? $('agentInput').value : '');
+    if (mode === 'web') return 'Task Web Dev';
+    if (mode === 'vps') return 'Task VPS & Server';
+    return 'Task Umum';
+  }
+
+  function renderAgentTasks() {
+    const list = $('agentTaskList');
+    if (!list) return;
+    list.innerHTML = '';
+    for (const task of agentTasksForMode()) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mode-opt';
+      btn.dataset.taskPrompt = task.prompt;
+      btn.innerHTML =
+        '<span class="ao-text"><span class="ao-title">' + esc(task.label) + '</span>' +
+        '<span class="ao-desc">' + esc(task.desc) + '</span></span>';
+      list.appendChild(btn);
+    }
+    const head = $('agentTaskHead');
+    if (head) head.textContent = agentTaskTitle();
+  }
+
+  function openAgentTaskPop() {
+    renderAgentTasks();
+    const pop = $('agentTaskPop');
+    if (pop) pop.classList.remove('hidden');
+  }
+
+  function closeAgentTaskPop() {
+    const pop = $('agentTaskPop');
+    if (pop) pop.classList.add('hidden');
+  }
+
+  function applyAgentTask(prompt) {
+    const input = $('agentInput');
+    if (!input) return;
+    input.value = prompt || '';
+    input.focus();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    closeAgentTaskPop();
+  }
+
+  function agentQuickActions() {
+    let html = '';
+    for (const task of agentTasksForMode()) {
+      html += '<button class="chip-action" data-agent-prompt="' + esc(task.prompt) + '">' + esc(task.label) + '</button>';
+    }
+    return html;
+  }
+
+  // ---------- Panduan Maintenance VPS ----------
+  const VPS_GUIDE_TOOLS = [
+    'server_status', 'firewall_status', 'firewall_allow', 'firewall_deny', 'service_restart',
+    'dns_lookup', 'dns_propagation', 'dns_zone_show', 'dns_zone_add', 'dns_zone_delete',
+    'install_nginx', 'install_apache', 'install_mysql', 'install_ssl'
+  ];
+
+  function renderVpsGuide() {
+    const body = $('vpsGuideBody');
+    if (!body) return;
+    let html = '<p class="muted">Pilih mode <strong>VPS &amp; Server</strong> di panel Agent, lalu klik task di bawah — prompt-nya langsung terisi di input agent.</p>';
+    html += '<div class="vps-guide-list">';
+    for (const t of AGENT_TASKS.vps) {
+      html += '<button class="vps-guide-item" type="button" data-guide-prompt="' + esc(t.prompt) + '">' +
+        '<span class="vps-guide-label">' + esc(t.label) + '</span>' +
+        '<span class="vps-guide-desc">' + esc(t.desc) + '</span></button>';
+    }
+    html += '</div>';
+    html += '<h4>Tool yang tersedia</h4>' +
+      '<p class="muted">Perintah berisiko (firewall, install, restart, DNS tulis) selalu meminta konfirmasi.</p>' +
+      '<div class="vps-guide-tools">';
+    for (const name of VPS_GUIDE_TOOLS) {
+      html += '<span class="vps-guide-tool">' + esc(name) + '</span>';
+    }
+    html += '</div>';
+    body.innerHTML = html;
+  }
+
+  function openVpsGuide() {
+    renderVpsGuide();
+    const m = $('vpsGuideModal');
+    if (m) m.classList.remove('hidden');
+  }
+
+  function closeVpsGuide() {
+    const m = $('vpsGuideModal');
+    if (m) m.classList.add('hidden');
+  }
+
+  // ---------- Onboarding / Preferences ----------
+  const OB_STEPS = 3;
+  let obStep = 1;
+
+  function renderOnboarding() {
+    document.querySelectorAll('#onboardingModal .onboarding-step').forEach((el) => {
+      el.classList.toggle('hidden', Number(el.dataset.step) !== obStep);
+    });
+    const dots = $('onboardingDots');
+    if (dots) {
+      dots.innerHTML = '';
+      for (let i = 1; i <= OB_STEPS; i++) {
+        const d = document.createElement('span');
+        d.className = 'onboarding-dot' + (i === obStep ? ' active' : '');
+        dots.appendChild(d);
+      }
+    }
+    const back = $('onboardingBack');
+    if (back) back.classList.toggle('hidden', obStep === 1);
+    const next = $('onboardingNext');
+    if (next) next.textContent = obStep === OB_STEPS ? 'Mulai' : 'Continue';
+    const titles = ['Preferences', 'Keybindings', 'Plugins & Fitur'];
+    const subs = [
+      'Import IDE settings in one click and choose your keymap',
+      'Select a keymap scheme. Menerapkan skema lain akan mengganti sebagian shortcut bawaan.',
+      'Aktifkan paket bawaan & plugin Open VSX'
+    ];
+    const t = $('obTitle');
+    if (t) t.textContent = titles[obStep - 1];
+    const s = $('obSubtitle');
+    if (s) s.textContent = subs[obStep - 1];
+  }
+
+  function renderObPacks() {
+    const box = $('obPacks');
+    if (!box) return;
+    const builtin = [
+      { id: 'php-pack', name: 'PHP Snippets' },
+      { id: 'python-pack', name: 'Python Snippets' },
+      { id: 'web-pack', name: 'Web Snippets' },
+      { id: 'js-pack', name: 'JavaScript Snippets' }
+    ];
+    const installed = new Set((S.extensions || []).map((e) => e.id));
+    box.innerHTML = '';
+    for (const p of builtin) {
+      const label = document.createElement('label');
+      label.className = 'ob-pack';
+      const checked = installed.has(p.id);
+      label.innerHTML = '<input type="checkbox" data-pack="' + p.id + '"' + (checked ? ' checked disabled' : '') + ' />' +
+        '<span>' + esc(p.name) + '</span><span class="ob-pack-meta">' + (checked ? 'terpasang' : 'snippet') + '</span>';
+      box.appendChild(label);
+    }
+  }
+
+  async function openOnboarding() {
+    obStep = 1;
+    const hint = $('obImportHint');
+    if (hint) { hint.textContent = 'Membaca settings VS Code...'; hint.dataset.json = ''; }
+    renderOnboarding();
+    renderObPacks();
+    const m = $('onboardingModal');
+    if (m) m.classList.remove('hidden');
+    try {
+      const res = await api.readVsCodeSettings();
+      if (res && res.ok) {
+        if (hint) { hint.textContent = 'VS Code settings ditemukan: ' + res.path; hint.dataset.json = res.content || ''; }
+      } else if (hint) {
+        hint.textContent = 'VS Code settings tidak ditemukan — kamu bisa mulai fresh.';
+      }
+    } catch {
+      if (hint) hint.textContent = 'VS Code settings tidak ditemukan — kamu bisa mulai fresh.';
+    }
+  }
+
+  function closeOnboarding() {
+    const m = $('onboardingModal');
+    if (m) m.classList.add('hidden');
+  }
+
+  function applyVsCodeImport() {
+    const hint = $('obImportHint');
+    const raw = hint ? (hint.dataset.json || '') : '';
+    if (!raw) return;
+    try {
+      const s = JSON.parse(raw);
+      const set = (key, val) => { if (val !== undefined && val !== null) localStorage.setItem(key, String(val)); };
+      set('sahabat.editorFontSize', s['editor.fontSize']);
+      set('sahabat.editorFontFamily', s['editor.fontFamily']);
+      set('sahabat.editorTabSize', s['editor.tabSize']);
+      if (s['editor.wordWrap'] === 'on' || s['editor.wordWrap'] === true) localStorage.setItem('sahabat.editorWordWrap', '1');
+      else if (s['editor.wordWrap'] === 'off' || s['editor.wordWrap'] === false) localStorage.setItem('sahabat.editorWordWrap', '0');
+      const theme = s['workbench.colorTheme'] || s['editor.theme'];
+      if (theme) {
+        const map = {
+          'Default Dark+': 'tomorrow_night',
+          'Default Light+': 'chrome',
+          'Monokai': 'monokai',
+          'Solarized Dark': 'solarized_dark',
+          'Solarized Light': 'solarized_light',
+          'Dracula': 'dracula',
+          'Nord': 'nord_dark',
+          'GitHub Dark': 'github_dark',
+          'GitHub Light': 'github_light_default',
+          'Abyss': 'abyss',
+          'Textmate': 'xcode'
+        };
+        const aceTheme = map[theme] || String(theme).toLowerCase().replace(/\s+/g, '_');
+        localStorage.setItem('sahabat.editorTheme', aceTheme);
+      }
+      if (S.editor) S.editor.setTheme('ace/theme/' + editorThemeName());
+      applyEditorPreferences();
+    } catch { /* abaikan */ }
+  }
+
+  async function finishOnboarding() {
+    if ($('obImport') && $('obImport').value === 'vscode') applyVsCodeImport();
+    if ($('obKeymap')) localStorage.setItem('sahabat.editorKeymap', $('obKeymap').value);
+    applyEditorPreferences();
+    const packs = Array.from(document.querySelectorAll('#obPacks input[data-pack]:checked:not(:disabled)')).map((i) => i.dataset.pack);
+    for (const id of packs) {
+      try { await api.extInstallBuiltin(id); } catch { /* abaikan */ }
+    }
+    if (packs.length) await refreshExtensions();
+    localStorage.setItem('sahabat.onboarded', '1');
+    closeOnboarding();
+    toast('Preferences tersimpan');
+  }
+
+  // ---------- Marketplace ----------
+  const MARKETPLACE = {
+    plugins: [
+      { id: 'fb', name: 'Facebook', desc: 'Posting ke Halaman & Profil via Meta Graph API', icon: '📘', cat: 'marketing', badge: 'Free' },
+      { id: 'tiktok', name: 'TikTok', desc: 'Upload & jadwalkan video TikTok', icon: '🎵', cat: 'marketing', badge: 'Free' },
+      { id: 'youtube', name: 'YouTube Reels', desc: 'Upload Shorts/Reels via YouTube Data API', icon: '▶️', cat: 'marketing', badge: 'Free' },
+      { id: 'cloudflare', name: 'Cloudflare', desc: 'Kelola DNS, firewall, dan cache Cloudflare', icon: '☁️', cat: 'developer', badge: 'Free' },
+      { id: 'chrome-devtools', name: 'Chrome DevTools', desc: 'Debug & inspeksi halaman web', icon: '🛠️', cat: 'developer', badge: 'Free' }
+    ],
+    skills: [
+      { id: 'ide-konten', name: 'Ide Konten', desc: 'Generate 10 ide konten marketing sesuai niche & tren', icon: '💡', cat: 'marketing', badge: 'Free', prompt: 'Buatkan 10 ide konten marketing yang relevan dengan niche saya. Tanyakan dulu niche dan target audiens.' },
+      { id: 'caption-hashtag', name: 'Caption & Hashtag', desc: 'Tulis caption menarik + hashtag yang relevan', icon: '✍️', cat: 'marketing', badge: 'Free', prompt: 'Tulis caption menarik beserta hashtag yang relevan untuk konten saya. Tanyakan dulu topik dan tone of voice.' },
+      { id: 'jadwal-posting', name: 'Jadwal Posting', desc: 'Susun jadwal posting mingguan', icon: '📅', cat: 'marketing', badge: 'Free', prompt: 'Susun jadwal posting mingguan untuk media sosial saya. Tanyakan dulu platform dan frekuensi posting.' },
+      { id: 'kalender-konten', name: 'Kalender Konten', desc: 'Buat kalender konten sebulan penuh', icon: '🗓️', cat: 'marketing', badge: 'Free', prompt: 'Buatkan kalender konten sebulan penuh. Tanyakan dulu niche, platform, dan tanggal penting.' },
+      { id: 'template-konten', name: 'Template Konten', desc: 'Template carousel, reel, dan video pendek', icon: '📄', cat: 'content', badge: 'Free', prompt: 'Buatkan template konten (carousel/reel/video pendek) untuk topik saya.' },
+      { id: 'analitik', name: 'Analitik Sosmed', desc: 'Ringkas performa & sarankan perbaikan', icon: '📊', cat: 'marketing', badge: 'Free', prompt: 'Ringkaskan performa media sosial saya dan sarankan perbaikan. Tanyakan dulu data atau akses analytics.' }
+    ],
+    mcp: [
+      { id: 'mcp-fb', name: 'Facebook MCP', desc: 'Sambungkan agent ke Facebook via MCP server', icon: '🔌', cat: 'marketing', badge: 'Local' },
+      { id: 'mcp-supabase', name: 'Supabase MCP', desc: 'Akses database Supabase langsung dari agent', icon: '🔌', cat: 'developer', badge: 'Local' },
+      { id: 'mcp-postgres', name: 'PostgreSQL MCP', desc: 'Akses database PostgreSQL langsung dari agent', icon: '🔌', cat: 'developer', badge: 'Local' }
+    ]
+  };
+
+  let mkTab = 'plugins';
+  let mkCat = 'all';
+  let mkQuery = '';
+
+  function renderMarketplace() {
+    const grid = $('mkGrid');
+    if (!grid) return;
+    const items = MARKETPLACE[mkTab] || [];
+    const q = String(mkQuery || '').toLowerCase();
+    const list = items.filter((it) => {
+      if (mkCat !== 'all' && it.cat !== mkCat) return false;
+      if (q && !(String(it.name).toLowerCase().includes(q) || String(it.desc).toLowerCase().includes(q))) return false;
+      return true;
+    });
+    grid.innerHTML = '';
+    if (!list.length) {
+      grid.innerHTML = '<p class="mk-empty">Tidak ada item yang cocok.</p>';
+      return;
+    }
+    const installed = new Set(S.installedSkills || []);
+    for (const it of list) {
+      const card = document.createElement('div');
+      card.className = 'mk-card';
+      const isSkill = mkTab === 'skills';
+      const isInstalled = isSkill && installed.has(it.id);
+      card.innerHTML =
+        '<div class="mk-icon">' + it.icon + '</div>' +
+        '<div class="mk-info"><div class="mk-name">' + esc(it.name) + '</div>' +
+        '<div class="mk-desc">' + esc(it.desc) + '</div></div>' +
+        '<div class="mk-actions"><span class="mk-badge' + (it.badge === 'Local' ? ' local' : '') + '">' + esc(it.badge) + '</span>' +
+        '<button class="mk-install' + (isInstalled ? ' installed' : '') + '" type="button">' + (isInstalled ? 'Pakai' : 'Install') + '</button></div>';
+      card.querySelector('.mk-install').addEventListener('click', () => {
+        if (isInstalled) useMarketplaceSkill(it);
+        else installMarketplaceItem(it);
+      });
+      grid.appendChild(card);
+    }
+  }
+
+  function installMarketplaceItem(it) {
+    if (mkTab === 'skills') {
+      S.installedSkills = S.installedSkills || [];
+      if (!S.installedSkills.includes(it.id)) S.installedSkills.push(it.id);
+      try { localStorage.setItem('sahabat.skills', JSON.stringify(S.installedSkills)); } catch { /* abaikan */ }
+      if (it.prompt) {
+        S.customTasks = S.customTasks || [];
+        if (!S.customTasks.some((t) => t.label === it.name)) {
+          S.customTasks.push({ label: it.name, desc: it.desc, prompt: it.prompt });
+        }
+        try { localStorage.setItem('sahabat.customTasks', JSON.stringify(S.customTasks)); } catch { /* abaikan */ }
+      }
+      toast('Skill terpasang: ' + it.name + ' — klik "Pakai" untuk memakainya.');
+      renderMarketplace();
+    } else {
+      toast(it.name + ' segera hadir.');
+    }
+  }
+
+  function useMarketplaceSkill(it) {
+    switchView('workspace');
+    const app = document.querySelector('.app');
+    if (app && app.classList.contains('hide-agent')) {
+      app.classList.remove('hide-agent');
+      const rail = $('agentRail');
+      if (rail) rail.classList.add('hidden');
+    }
+    const input = $('agentInput');
+    if (input) {
+      input.value = it.prompt || '';
+      input.focus();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    toast('Skill dipakai: ' + it.name);
+  }
+
+  // ---------- Mode Developer / Advance ----------
+  function setUserMode(mode) {
+    S.userMode = mode === 'advance' ? 'advance' : 'developer';
+    try { localStorage.setItem('sahabat.userMode', S.userMode); } catch { /* abaikan */ }
+    document.querySelectorAll('.mode-opt').forEach((b) => b.classList.toggle('active', b.dataset.mode === S.userMode));
+    document.body.classList.toggle('mode-advance', S.userMode === 'advance');
+    document.body.classList.toggle('mode-developer', S.userMode === 'developer');
+  }
+
+  // ---------- Desktop / Dashboard ----------
+  function renderDesktop() {
+    const g = $('dskGreeting');
+    if (g) {
+      const h = new Date().getHours();
+      const salam = h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 19 ? 'Selamat sore' : 'Selamat malam';
+      g.textContent = salam;
+    }
+    const d = $('dskDate');
+    if (d) d.textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const srv = $('dskServer');
+    if (srv) {
+      if (S.target.type === 'local') srv.textContent = 'Target: lokal · ' + (S.local.root || 'belum ada folder');
+      else if (S.target.type === 'ssh' || S.target.type === 'ftp') srv.textContent = 'Target: ' + S.target.type.toUpperCase() + ' · ' + (remoteSession() ? remoteSession().label : 'terputus');
+      else srv.textContent = 'Belum ada koneksi.';
+    }
+    const tk = $('dskTasks');
+    if (tk) {
+      const n = (agentTasksForMode() || []).length;
+      tk.textContent = n + ' task tersedia' + (S.installedSkills && S.installedSkills.length ? ' · ' + S.installedSkills.length + ' skill terpasang' : '');
+    }
+    const recent = $('dskRecent');
+    if (recent) {
+      recent.innerHTML = '';
+      const tabs = (S.tabs || []).slice(-6).reverse();
+      if (!tabs.length) recent.innerHTML = '<p class="dsk-muted">Belum ada file.</p>';
+      for (const t of tabs) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'dsk-recent-item';
+        item.textContent = baseName(t.path || '');
+        item.addEventListener('click', () => { switchView('workspace'); setActiveSession(t); });
+        recent.appendChild(item);
+      }
+    }
+    const st = $('dskStatus');
+    if (st) {
+      const key = S.settings && S.settings.hasKey ? 'API key aktif' : 'API key belum diisi';
+      const model = S.model || (S.models[0] && S.models[0].id) || '-';
+      st.innerHTML =
+        '<div><span>Key</span><strong>' + esc(key) + '</strong></div>' +
+        '<div><span>Model</span><strong>' + esc(model) + '</strong></div>' +
+        '<div><span>Target</span><strong>' + esc(S.target.type === 'local' ? 'Lokal' : S.target.type.toUpperCase()) + '</strong></div>' +
+        '<div><span>Versi</span><strong>' + esc('v' + ((S.settings && S.settings.version) || '1.2.0')) + '</strong></div>';
+    }
+    renderScheduleWidget();
+    loadWeatherWidget();
+    loadServerWidget();
+  }
+
+  const DSK_CITIES = [
+    ['Jakarta', -6.2088, 106.8456],
+    ['Surabaya', -7.2575, 112.7521],
+    ['Bandung', -6.9175, 107.6191],
+    ['Medan', 3.5952, 98.6722],
+    ['Semarang', -6.9932, 110.4203],
+    ['Yogyakarta', -7.7956, 110.3695],
+    ['Makassar', -5.1477, 119.4327],
+    ['Denpasar', -8.6705, 115.2126],
+    ['Palembang', -2.9761, 104.7754],
+    ['Balikpapan', -1.2379, 116.8529]
+  ];
+
+  async function loadServerWidget() {
+    const body = $('dskServerBody');
+    if (!body) return;
+    if (S.target.type !== 'ssh' || !remoteSession()) {
+      body.textContent = 'Hubungkan server (SSH) untuk melihat status.\nBuka Workspace → Koneksi SSH/FTP.';
+      return;
+    }
+    body.textContent = 'Memuat status server…';
+    try {
+      const res = await api.agentServerStatus(agentTargetPayload());
+      body.textContent = (res && res.ok) ? (res.output || '(tanpa output)') : ('Gagal: ' + ((res && res.error) || 'terjadi kesalahan'));
+    } catch (e) {
+      body.textContent = 'Gagal: ' + ((e && e.message) || e);
+    }
+  }
+
+  function renderScheduleWidget() {
+    const body = $('dskSchedule');
+    if (!body) return;
+    const plan = [
+      ['Sen', '09:00', 'Feed edukasi'],
+      ['Sel', '12:00', 'Feed promo'],
+      ['Rab', '19:00', 'Reels / TikTok'],
+      ['Kam', '09:00', 'Feed tips'],
+      ['Jum', '17:00', 'Testimoni'],
+      ['Sab', '10:00', 'Feed ringan'],
+      ['Min', '—', 'Istirahat']
+    ];
+    let html = '<div class="dsk-schedule">';
+    for (const [day, time, note] of plan) {
+      html += '<div class="dsk-schedule-row"><span class="dsk-schedule-day">' + day + '</span>' +
+        '<span class="dsk-schedule-time">' + time + '</span>' +
+        '<span class="dsk-schedule-note">' + note + '</span></div>';
+    }
+    body.innerHTML = html + '</div>';
+  }
+
+  async function loadWeatherWidget(cityName) {
+    const body = $('dskWeatherBody');
+    if (!body) return;
+    const sel = $('dskWeatherCity');
+    const chosen = cityName || (sel && sel.value) || localStorage.getItem('sahabat.weatherCity') || 'Jakarta';
+    const city = DSK_CITIES.find((c) => c[0] === chosen) || DSK_CITIES[0];
+    body.textContent = 'Memuat cuaca…';
+    try {
+      const res = await api.getWeather(city[1], city[2]);
+      const cw = (res && res.ok && res.current) || null;
+      if (!cw) throw new Error((res && res.error) || 'tidak ada data');
+      const code = Number(cw.weathercode);
+      const map = { 0: ['☀️', 'Cerah'], 1: ['🌤️', 'Sebagian cerah'], 2: ['⛅', 'Berawan sebagian'], 3: ['☁️', 'Berawan'], 45: ['🌫️', 'Berkabut'], 48: ['🌫️', 'Kabut tebal'], 51: ['🌦️', 'Gerimis ringan'], 53: ['🌦️', 'Gerimis'], 55: ['🌧️', 'Gerimis lebat'], 61: ['🌧️', 'Hujan ringan'], 63: ['🌧️', 'Hujan'], 65: ['🌧️', 'Hujan lebat'], 71: ['🌨️', 'Salju ringan'], 73: ['🌨️', 'Salju'], 75: ['🌨️', 'Salju lebat'], 80: ['🌦️', 'Hujan rintik'], 81: ['🌧️', 'Hujan sedang'], 82: ['⛈️', 'Hujan deras'], 95: ['⛈️', 'Badai petir'], 96: ['⛈️', 'Badai + hail'], 99: ['⛈️', 'Badai lebat'] };
+      const [icon, desc] = map[code] || ['🌡️', 'Lainnya'];
+      body.innerHTML = '<div class="dsk-weather"><span class="dsk-weather-icon">' + icon + '</span>' +
+        '<span class="dsk-weather-temp">' + Math.round(cw.temperature) + '°C</span>' +
+        '<span class="dsk-weather-desc">' + desc + '</span></div>' +
+        '<span class="dsk-weather-city-label">' + esc(city[0]) + ' · angin ' + Math.round(cw.windspeed || 0) + ' km/j</span>';
+      try { localStorage.setItem('sahabat.weatherCity', city[0]); } catch { /* abaikan */ }
+    } catch (e) {
+      body.innerHTML = '<p class="dsk-muted">Gagal memuat cuaca.</p>';
+    }
+  }
 
   function renderChatMarkdown(text) {
     const src = String(text || '');
@@ -3684,8 +4678,10 @@
     const images = S.attachments.slice();
     if ((!text && !images.length) || S.busy) return;
     if (!S.settings.hasKey) { openSettings(); return; }
+    if (text) rememberInput('chat', text);
     stopVoiceChat();
     input.value = '';
+    updateChatModeChip();
     S.attachments = [];
     renderAttachments();
     S.busy = true;
@@ -3738,7 +4734,10 @@
       $('sendChat').classList.remove('hidden');
       $('stopChat').classList.add('hidden');
     }
-    const res = await api.startChat({ requestId, model: currentModel(), messages: S.chat.slice(-20) });
+    const mode = chatModeById(effectiveChatMode(text));
+    const apiMessages = S.chat.slice(-20);
+    if (mode.prompt) apiMessages.unshift({ role: 'system', content: mode.prompt });
+    const res = await api.startChat({ requestId, model: currentModel(), messages: apiMessages });
     if (!res || !res.ok) {
       cleanup();
       body.closest('.message').classList.add('error');
@@ -4107,6 +5106,10 @@
     document.querySelectorAll('.openSettings').forEach((btn) => btn.addEventListener('click', openSettings));
     $('cancelSettings').addEventListener('click', () => $('settingsModal').classList.add('hidden'));
     $('saveSettings').addEventListener('click', saveSettings);
+    $('openPreferences').addEventListener('click', () => {
+      $('settingsModal').classList.add('hidden');
+      openOnboarding();
+    });
     $('modelAccessModeSelect').addEventListener('change', () => {
       const v = $('modelAccessModeSelect').value;
       if (v && v !== 'auto') {
@@ -4227,6 +5230,20 @@
     $('chatInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
+    bindInputHistory($('chatInput'), 'chat');
+    renderChatModePop();
+    updateChatModeChip();
+    $('chatModeBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pop = $('chatModePop');
+      if (!pop) return;
+      if (pop.classList.contains('hidden')) openChatModePop(); else closeChatModePop();
+    });
+    $('chatModeChipClear').addEventListener('click', () => setChatMode('auto'));
+    $('chatInput').addEventListener('input', updateChatModeChip);
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.mode-wrap')) closeChatModePop();
+    });
     $('attachChat').addEventListener('click', () => $('chatFiles').click());
     $('voiceChatBtn').addEventListener('click', () => toggleVoiceChat('chatInput'));
     $('voiceAgentBtn').addEventListener('click', () => toggleVoiceChat('agentInput'));
@@ -4294,6 +5311,7 @@
       input.value = btn.dataset.agentPrompt || '';
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     loadAgentHistory();
     $('agentApprovalBtn').addEventListener('click', (e) => {
@@ -4329,6 +5347,87 @@
     });
     $('agentInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAgent(); }
+    });
+    bindInputHistory($('agentInput'), 'agent');
+    renderAgentModePop();
+    updateAgentModeChip();
+    $('agentModeBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pop = $('agentModePop');
+      if (!pop) return;
+      if (pop.classList.contains('hidden')) openAgentModePop(); else closeAgentModePop();
+    });
+    $('agentModeChipClear').addEventListener('click', () => setAgentMode('auto'));
+    $('agentInput').addEventListener('input', updateAgentModeChip);
+    $('agentTaskBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pop = $('agentTaskPop');
+      if (!pop) return;
+      if (pop.classList.contains('hidden')) openAgentTaskPop(); else closeAgentTaskPop();
+    });
+    $('agentTaskPop').addEventListener('click', (e) => {
+      const task = e.target.closest('[data-task-prompt]');
+      if (task) applyAgentTask(task.dataset.taskPrompt);
+    });
+    $('agentGuideBtn').addEventListener('click', openVpsGuide);
+    $('vpsGuideClose').addEventListener('click', closeVpsGuide);
+    $('vpsGuideModal').addEventListener('click', (e) => { if (e.target.id === 'vpsGuideModal') closeVpsGuide(); });
+    $('vpsGuideBody').addEventListener('click', (e) => {
+      const item = e.target.closest('[data-guide-prompt]');
+      if (!item) return;
+      const input = $('agentInput');
+      if (input) {
+        input.value = item.dataset.guidePrompt || '';
+        input.focus();
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      closeVpsGuide();
+    });
+    $('onboardingNext').addEventListener('click', async () => {
+      if (obStep < OB_STEPS) { obStep += 1; renderOnboarding(); }
+      else { await finishOnboarding(); }
+    });
+    $('onboardingBack').addEventListener('click', () => {
+      if (obStep > 1) { obStep -= 1; renderOnboarding(); }
+    });
+    document.querySelectorAll('#view-marketplace .mk-tab').forEach((b) => b.addEventListener('click', () => {
+      mkTab = b.dataset.mkt;
+      document.querySelectorAll('#view-marketplace .mk-tab').forEach((x) => x.classList.toggle('active', x === b));
+      renderMarketplace();
+    }));
+    document.querySelectorAll('#view-marketplace .mk-cat').forEach((b) => b.addEventListener('click', () => {
+      mkCat = b.dataset.cat;
+      document.querySelectorAll('#view-marketplace .mk-cat').forEach((x) => x.classList.toggle('active', x === b));
+      renderMarketplace();
+    }));
+    if ($('mkSearch')) $('mkSearch').addEventListener('input', (e) => { mkQuery = e.target.value || ''; renderMarketplace(); });
+    if ($('mkManage')) $('mkManage').addEventListener('click', () => switchView('extensions'));
+    document.querySelectorAll('.mode-opt').forEach((b) => b.addEventListener('click', () => {
+      setUserMode(b.dataset.mode);
+      toast(b.dataset.mode === 'advance' ? 'Mode Advance: no prompting' : 'Mode Developer');
+    }));
+    document.querySelectorAll('#view-desktop [data-go]').forEach((b) => b.addEventListener('click', () => switchView(b.dataset.go)));
+    if ($('dskNewChat')) $('dskNewChat').addEventListener('click', () => { switchView('chat'); newChat(); });
+    if ($('dskServerRefresh')) $('dskServerRefresh').addEventListener('click', loadServerWidget);
+    if ($('dskWeatherRefresh')) $('dskWeatherRefresh').addEventListener('click', () => loadWeatherWidget());
+    if ($('dskWeatherCity')) $('dskWeatherCity').addEventListener('change', (e) => loadWeatherWidget(e.target.value));
+    if ($('dskScheduleBtn')) $('dskScheduleBtn').addEventListener('click', () => {
+      useMarketplaceSkill({ name: 'Jadwal Posting', prompt: 'Susun jadwal posting mingguan untuk media sosial saya. Tanyakan dulu platform dan frekuensi posting.' });
+    });
+    const citySel = $('dskWeatherCity');
+    if (citySel) {
+      citySel.innerHTML = '';
+      for (const [name] of DSK_CITIES) {
+        const o = document.createElement('option');
+        o.value = name;
+        o.textContent = name;
+        citySel.appendChild(o);
+      }
+      citySel.value = localStorage.getItem('sahabat.weatherCity') || 'Jakarta';
+    }
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#agentModePop') && !e.target.closest('#agentModeBtn')) closeAgentModePop();
+      if (!e.target.closest('#agentTaskPop') && !e.target.closest('#agentTaskBtn')) closeAgentTaskPop();
     });
 
     $('termNewTab').addEventListener('click', () => { newLocalTerminal(S.local.root); });
@@ -4404,6 +5503,7 @@
         if (!$('promptModal').classList.contains('hidden')) closePrompt(null);
         if (!$('cloneModal').classList.contains('hidden')) $('cloneModal').classList.add('hidden');
         if (!$('settingsModal').classList.contains('hidden')) $('settingsModal').classList.add('hidden');
+        if (!$('vpsGuideModal').classList.contains('hidden')) closeVpsGuide();
       }
     });
 
@@ -4442,6 +5542,7 @@
   async function init() {
     aceSetup();
     bind();
+    setUserMode(S.userMode);
     applySideWidth(S.ui.sideWidth, false);
     applyAgentWidth(S.ui.agentWidth, false);
     applyTermHeight(S.ui.termHeight, false);
@@ -4547,6 +5648,9 @@
 
     if (S.settings.autoUpdate !== false) {
       setTimeout(() => { checkUpdates(false).catch(() => {}); }, 2500);
+    }
+    if (!localStorage.getItem('sahabat.onboarded')) {
+      setTimeout(() => openOnboarding(), 700);
     }
   }
 

@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.2.0/SahabatMobile-Desktop-Setup-1.2.0.exe",
-  "notes": "Terminal interaktif (PTY), Command Palette, status bar, tema premium, spinner ala OpenCode, perbaikan leak & performa.",
+  "version": "1.3.0",
+  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.3.0/SahabatMobile-Desktop-Setup-1.3.0.exe",
+  "notes": "Mode Chat + deteksi otomatis, tool VPS/DNS/install via agent, Desktop dashboard & widget, Marketplace plugin/skill/MCP, Extensions Open VSX, koneksi SSH/FTP, dan mode Developer/Advance.",
   "mandatory": false
 }

@@ -10,6 +10,8 @@ function subscribe(channel) {
 
 contextBridge.exposeInMainWorld('sahabat', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
+  readVsCodeSettings: () => ipcRenderer.invoke('settings:readVsCode'),
+  getWeather: (lat, lon) => ipcRenderer.invoke('weather:get', { lat, lon }),
   saveSettings: (payload) => ipcRenderer.invoke('settings:set', payload),
   detectModelAccess: () => ipcRenderer.invoke('models:detectAccess'),
   resetBlockedModels: () => ipcRenderer.invoke('settings:set', { resetBlockedModels: true }),
@@ -105,5 +107,19 @@ contextBridge.exposeInMainWorld('sahabat', {
   agentReadFile: (path, target) => ipcRenderer.invoke('agent:readFile', { path, target }),
   agentWriteFile: (path, content, target) => ipcRenderer.invoke('agent:writeFile', { path, content, target }),
   agentRunCommand: (command, cwd, timeoutMs, target, allow, approval) => ipcRenderer.invoke('agent:runCommand', { command, cwd, timeoutMs, target, allow, approval }),
+  agentServerStatus: (target) => ipcRenderer.invoke('agent:serverStatus', { target }),
+  agentFirewallStatus: (target) => ipcRenderer.invoke('agent:firewallStatus', { target }),
+  agentFirewallAllow: (port, proto, target, approval) => ipcRenderer.invoke('agent:firewallAllow', { port, proto, target, approval }),
+  agentFirewallDeny: (port, proto, target, approval) => ipcRenderer.invoke('agent:firewallDeny', { port, proto, target, approval }),
+  agentServiceRestart: (service, target, approval) => ipcRenderer.invoke('agent:serviceRestart', { service, target, approval }),
+  agentDnsLookup: (domain, type, target) => ipcRenderer.invoke('agent:dnsLookup', { domain, type, target }),
+  agentDnsPropagation: (domain, type, target) => ipcRenderer.invoke('agent:dnsPropagation', { domain, type, target }),
+  agentDnsZoneShow: (domain, target) => ipcRenderer.invoke('agent:dnsZoneShow', { domain, target }),
+  agentDnsZoneAdd: (domain, name, type, value, ttl, target, approval) => ipcRenderer.invoke('agent:dnsZoneAdd', { domain, name, type, value, ttl, target, approval }),
+  agentDnsZoneDelete: (domain, name, type, target, approval) => ipcRenderer.invoke('agent:dnsZoneDelete', { domain, name, type, target, approval }),
+  agentInstallNginx: (target, approval) => ipcRenderer.invoke('agent:installNginx', { target, approval }),
+  agentInstallApache: (target, approval) => ipcRenderer.invoke('agent:installApache', { target, approval }),
+  agentInstallMysql: (target, approval) => ipcRenderer.invoke('agent:installMysql', { target, approval }),
+  agentInstallSsl: (domain, email, webserver, target, approval) => ipcRenderer.invoke('agent:installSsl', { domain, email, webserver, target, approval }),
   transcribeAudio: (data, format) => ipcRenderer.invoke('audio:transcribe', { data, format })
 });
