@@ -1,6 +1,6 @@
 {
-  "version": "1.3.0",
-  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.3.0/SahabatMobile-Desktop-Setup-1.3.0.exe",
-  "notes": "Mode Chat + deteksi otomatis, tool VPS/DNS/install via agent, Desktop dashboard & widget, Marketplace plugin/skill/MCP, Extensions Open VSX, koneksi SSH/FTP, dan mode Developer/Advance.",
+  "version": "1.4.0",
+  "url": "https://github.com/sahabatmobile/sahabatmobile-desktop/releases/download/v1.4.0/SahabatMobile-Desktop-Setup-1.4.0.exe",
+  "notes": "Marketplace plugin fungsional: hubungkan account sendiri (Cloudflare, Facebook, Instagram, TikTok, YouTube), tes koneksi, dan tool agent. Logo window/taskbar memakai logo asli.",
   "mandatory": false
 }

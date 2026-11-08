@@ -234,6 +234,104 @@
           required: ['domain', 'email']
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'cloudflare_zones',
+        description: 'Daftar zone (domain) di Cloudflare akun Anda. Hanya jika plugin Cloudflare sudah dihubungkan.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'cloudflare_dns_list',
+        description: 'Daftar DNS record di zone Cloudflare.',
+        parameters: {
+          type: 'object',
+          properties: { zoneId: { type: 'string', description: 'ID zone Cloudflare' } },
+          required: ['zoneId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'cloudflare_dns_add',
+        description: 'Tambah DNS record di Cloudflare.',
+        parameters: {
+          type: 'object',
+          properties: {
+            zoneId: { type: 'string', description: 'ID zone' },
+            type: { type: 'string', description: 'A, AAAA, CNAME, TXT, MX, dll' },
+            name: { type: 'string', description: 'Nama record (mis. example.com atau sub)' },
+            content: { type: 'string', description: 'Isi record (IP atau target)' },
+            ttl: { type: 'number', description: 'TTL (1 = auto)' },
+            proxied: { type: 'boolean', description: 'Aktifkan proxy Cloudflare' }
+          },
+          required: ['zoneId', 'type', 'name', 'content']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'cloudflare_dns_delete',
+        description: 'Hapus DNS record di Cloudflare.',
+        parameters: {
+          type: 'object',
+          properties: {
+            zoneId: { type: 'string', description: 'ID zone' },
+            recordId: { type: 'string', description: 'ID record' }
+          },
+          required: ['zoneId', 'recordId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'cloudflare_purge',
+        description: 'Bersihkan cache Cloudflare untuk zone.',
+        parameters: {
+          type: 'object',
+          properties: { zoneId: { type: 'string', description: 'ID zone' } },
+          required: ['zoneId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'facebook_pages',
+        description: 'Daftar Halaman Facebook yang dikelola akun Anda. Hanya jika plugin Facebook sudah dihubungkan.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'facebook_post',
+        description: 'Posting ke Halaman Facebook.',
+        parameters: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'ID halaman' },
+            message: { type: 'string', description: 'Isi postingan' },
+            link: { type: 'string', description: 'URL lampiran (opsional)' }
+          },
+          required: ['id', 'message']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'instagram_accounts',
+        description: 'Daftar akun Instagram Business yang terhubung. Hanya jika plugin Instagram sudah dihubungkan.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
     }
   ];
 
@@ -3222,6 +3320,14 @@
       const mode = (S.settings && S.settings.agentApproval) || 'manual';
       return api.agentInstallSsl(args.domain, args.email, args.webserver || 'nginx', target, mode);
     }
+    if (name === 'cloudflare_zones') return api.pluginCall('cloudflare', 'list_zones');
+    if (name === 'cloudflare_dns_list') return api.pluginCall('cloudflare', 'list_dns', args);
+    if (name === 'cloudflare_dns_add') return api.pluginCall('cloudflare', 'add_dns', args);
+    if (name === 'cloudflare_dns_delete') return api.pluginCall('cloudflare', 'delete_dns', args);
+    if (name === 'cloudflare_purge') return api.pluginCall('cloudflare', 'purge_cache', args);
+    if (name === 'facebook_pages') return api.pluginCall('facebook', 'pages');
+    if (name === 'facebook_post') return api.pluginCall('facebook', 'post', args);
+    if (name === 'instagram_accounts') return api.pluginCall('instagram', 'accounts');
     return { ok: false, error: 'Tool tidak dikenal: ' + name };
   }
 
@@ -4065,11 +4171,12 @@
   // ---------- Marketplace ----------
   const MARKETPLACE = {
     plugins: [
-      { id: 'fb', name: 'Facebook', desc: 'Posting ke Halaman & Profil via Meta Graph API', icon: '📘', cat: 'marketing', badge: 'Free' },
+      { id: 'facebook', name: 'Facebook', desc: 'Posting ke Halaman & Profil via Meta Graph API', icon: '📘', cat: 'marketing', badge: 'Free' },
       { id: 'tiktok', name: 'TikTok', desc: 'Upload & jadwalkan video TikTok', icon: '🎵', cat: 'marketing', badge: 'Free' },
       { id: 'youtube', name: 'YouTube Reels', desc: 'Upload Shorts/Reels via YouTube Data API', icon: '▶️', cat: 'marketing', badge: 'Free' },
       { id: 'cloudflare', name: 'Cloudflare', desc: 'Kelola DNS, firewall, dan cache Cloudflare', icon: '☁️', cat: 'developer', badge: 'Free' },
-      { id: 'chrome-devtools', name: 'Chrome DevTools', desc: 'Debug & inspeksi halaman web', icon: '🛠️', cat: 'developer', badge: 'Free' }
+      { id: 'chrome-devtools', name: 'Chrome DevTools', desc: 'Debug & inspeksi halaman web', icon: '🛠️', cat: 'developer', badge: 'Free' },
+      { id: 'instagram', name: 'Instagram', desc: 'Posting foto/video & kelola akun Instagram', icon: '📸', cat: 'marketing', badge: 'Free' }
     ],
     skills: [
       { id: 'ide-konten', name: 'Ide Konten', desc: 'Generate 10 ide konten marketing sesuai niche & tren', icon: '💡', cat: 'marketing', badge: 'Free', prompt: 'Buatkan 10 ide konten marketing yang relevan dengan niche saya. Tanyakan dulu niche dan target audiens.' },
@@ -4109,6 +4216,7 @@
     for (const it of list) {
       const card = document.createElement('div');
       card.className = 'mk-card';
+      card.dataset.id = it.id;
       const isSkill = mkTab === 'skills';
       const isInstalled = isSkill && installed.has(it.id);
       card.innerHTML =
@@ -4123,6 +4231,19 @@
       });
       grid.appendChild(card);
     }
+    // Status koneksi plugin (kredensial customer sendiri)
+    api.pluginsList().then((r) => {
+      if (!r || !r.ok) return;
+      const connected = new Set((r.plugins || []).filter((p) => p.connected).map((p) => p.id));
+      grid.querySelectorAll('.mk-card').forEach((card) => {
+        const id = card.dataset.id;
+        const btn = card.querySelector('.mk-install');
+        if (!btn || mkTab !== 'plugins') return;
+        const isConn = connected.has(id);
+        btn.textContent = isConn ? 'Atur' : 'Install';
+        btn.classList.toggle('installed', isConn);
+      });
+    }).catch(() => {});
   }
 
   function installMarketplaceItem(it) {
@@ -4139,8 +4260,99 @@
       }
       toast('Skill terpasang: ' + it.name + ' — klik "Pakai" untuk memakainya.');
       renderMarketplace();
+    } else if (mkTab === 'plugins') {
+      openPluginConfig(it.id);
     } else {
       toast(it.name + ' segera hadir.');
+    }
+  }
+
+  // ---------- Plugin config (kredensial customer sendiri) ----------
+  let pluginConfigId = null;
+
+  async function openPluginConfig(id) {
+    pluginConfigId = id;
+    const item = (MARKETPLACE.plugins || []).find((x) => x.id === id) || {};
+    $('pluginTitle').textContent = (item.icon || '') + ' ' + (item.name || id);
+    $('pluginDesc').textContent = item.desc || '';
+    const box = $('pluginFields');
+    box.innerHTML = '';
+    const r = await api.pluginGetConfig(id);
+    if (r && r.ok) {
+      const fields = r.fields || [];
+      if (!fields.length) {
+        box.innerHTML = '<p style="font-size:13px;color:var(--muted)">Plugin ini tidak memerlukan kredensial.</p>';
+      }
+      for (const f of fields) {
+        const wrap = document.createElement('label');
+        wrap.style.display = 'block';
+        wrap.style.marginBottom = '10px';
+        const span = document.createElement('span');
+        span.style.fontSize = '12px';
+        span.style.fontWeight = '600';
+        span.style.display = 'block';
+        span.style.marginBottom = '3px';
+        span.textContent = f.label;
+        const input = document.createElement('input');
+        input.type = 'password';
+        input.value = r.values[f.key] || '';
+        input.placeholder = f.placeholder || '';
+        input.autocomplete = 'off';
+        input.dataset.field = f.key;
+        if (f.help) input.title = f.help;
+        wrap.appendChild(span);
+        wrap.appendChild(input);
+        if (f.help) {
+          const help = document.createElement('div');
+          help.style.fontSize = '11px';
+          help.style.color = 'var(--muted)';
+          help.style.marginTop = '2px';
+          help.textContent = f.help;
+          wrap.appendChild(help);
+        }
+        box.appendChild(wrap);
+      }
+      $('pluginStatus').textContent = r.connected ? 'Status: terhubung' : 'Status: belum terhubung';
+      $('pluginStatus').style.color = r.connected ? 'var(--accent)' : 'var(--muted)';
+    } else {
+      $('pluginStatus').textContent = (r && r.error) || 'Gagal memuat konfigurasi.';
+      $('pluginStatus').style.color = '#ef4444';
+    }
+    $('pluginModal').classList.remove('hidden');
+  }
+
+  function closePluginConfig() {
+    $('pluginModal').classList.add('hidden');
+    pluginConfigId = null;
+  }
+
+  async function savePluginConfig() {
+    if (!pluginConfigId) return;
+    const values = {};
+    document.querySelectorAll('#pluginFields input[data-field]').forEach((inp) => { values[inp.dataset.field] = inp.value; });
+    const r = await api.pluginSaveConfig(pluginConfigId, values);
+    if (r && r.ok) {
+      $('pluginStatus').textContent = 'Tersimpan di PC ini. Klik "Tes Koneksi" untuk memverifikasi.';
+      $('pluginStatus').style.color = 'var(--accent)';
+      toast('Plugin tersimpan: ' + pluginConfigId);
+      renderMarketplace();
+    } else {
+      $('pluginStatus').textContent = (r && r.error) || 'Gagal menyimpan.';
+      $('pluginStatus').style.color = '#ef4444';
+    }
+  }
+
+  async function testPluginConfig() {
+    if (!pluginConfigId) return;
+    $('pluginStatus').textContent = 'Menguji koneksi...';
+    $('pluginStatus').style.color = 'var(--muted)';
+    const r = await api.pluginTest(pluginConfigId);
+    if (r && r.ok) {
+      $('pluginStatus').textContent = '✓ ' + (r.message || 'Koneksi berhasil');
+      $('pluginStatus').style.color = 'var(--accent)';
+    } else {
+      $('pluginStatus').textContent = '✗ ' + ((r && r.error) || 'Gagal');
+      $('pluginStatus').style.color = '#ef4444';
     }
   }
 
@@ -5186,6 +5398,10 @@
     $('connectionsModal').addEventListener('click', (e) => {
       if (e.target.id === 'connectionsModal') closeSavedConnections();
     });
+    $('pluginCancel').addEventListener('click', closePluginConfig);
+    $('pluginSave').addEventListener('click', savePluginConfig);
+    $('pluginTest').addEventListener('click', testPluginConfig);
+    $('pluginModal').addEventListener('click', (e) => { if (e.target.id === 'pluginModal') closePluginConfig(); });
     $('extFilter').addEventListener('change', (e) => { S.extFilter = e.target.value; renderExtensions(); });
     $('extRefreshSide').addEventListener('click', async () => {
       await refreshExtensions();
@@ -5501,6 +5717,7 @@
         if (!$('mapModal').classList.contains('hidden')) closeMapDrive();
         if (!$('connectionsModal').classList.contains('hidden')) closeSavedConnections();
         if (!$('promptModal').classList.contains('hidden')) closePrompt(null);
+        if (!$('pluginModal').classList.contains('hidden')) closePluginConfig();
         if (!$('cloneModal').classList.contains('hidden')) $('cloneModal').classList.add('hidden');
         if (!$('settingsModal').classList.contains('hidden')) $('settingsModal').classList.add('hidden');
         if (!$('vpsGuideModal').classList.contains('hidden')) closeVpsGuide();

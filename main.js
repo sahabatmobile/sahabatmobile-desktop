@@ -1824,6 +1824,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#0f1115',
     title: 'SahabatMobile Desktop',
+    icon: path.join(__dirname, 'build/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -2685,6 +2686,205 @@ ipcMain.handle('settings:set', (event, payload) => {
     modelAccessAll: s.modelAccessAll === true,
     modelBlockedCount: Array.isArray(s.modelBlocked) ? s.modelBlocked.length : 0
   };
+});
+
+// ---------- Plugin Marketplace (kredensial + tool) ----------
+// Kredensial diisi customer dengan ACCOUNT MEREKA SENDIRI (bukan account Sahabat).
+const PLUGIN_DEFS = {
+  cloudflare: {
+    name: 'Cloudflare',
+    icon: '☁️',
+    desc: 'Kelola DNS, firewall, dan cache Cloudflare',
+    fields: [
+      { key: 'token', label: 'Cloudflare API Token', placeholder: 'Token dari dashboard.cloudflare.com', help: 'Buat token di dashboard.cloudflare.com → My Profile → API Tokens. Permission: Zone / DNS / Edit.' }
+    ],
+    async test(cfg) {
+      const res = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', { headers: { Authorization: 'Bearer ' + cfg.token } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error((data.errors && data.errors[0] && data.errors[0].message) || 'Token tidak valid');
+      return { message: 'Token valid (' + ((data.result && data.result.status) || 'unknown') + ')' };
+    },
+    async call(cfg, action, p) {
+      const base = 'https://api.cloudflare.com/client/v4';
+      const h = { Authorization: 'Bearer ' + cfg.token, 'Content-Type': 'application/json' };
+      let url = '', method = 'GET', body;
+      if (action === 'list_zones') url = base + '/zones?per_page=50';
+      else if (action === 'list_dns') url = base + '/zones/' + encodeURIComponent(p.zoneId) + '/dns_records?per_page=100';
+      else if (action === 'add_dns') { url = base + '/zones/' + encodeURIComponent(p.zoneId) + '/dns_records'; method = 'POST'; body = { type: p.type || 'A', name: p.name, content: p.content, ttl: p.ttl || 1, proxied: p.proxied !== false }; }
+      else if (action === 'delete_dns') { url = base + '/zones/' + encodeURIComponent(p.zoneId) + '/dns_records/' + encodeURIComponent(p.recordId); method = 'DELETE'; }
+      else if (action === 'purge_cache') { url = base + '/zones/' + encodeURIComponent(p.zoneId) + '/purge_cache'; method = 'POST'; body = { purge_everything: true }; }
+      else if (action === 'list_firewall') url = base + '/zones/' + encodeURIComponent(p.zoneId) + '/firewall/rules?per_page=50';
+      else throw new Error('Aksi tidak dikenal: ' + action);
+      const res = await fetch(url, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) throw new Error((data.errors && data.errors[0] && data.errors[0].message) || ('HTTP ' + res.status));
+      return data.result;
+    }
+  },
+  facebook: {
+    name: 'Facebook',
+    icon: '📘',
+    desc: 'Posting ke Halaman & Profil via Meta Graph API',
+    fields: [
+      { key: 'accessToken', label: 'Meta Access Token', placeholder: 'EAAG... (Page access token)', help: 'Page access token dari developers.facebook.com (Graph API Explorer).' }
+    ],
+    async test(cfg) {
+      const res = await fetch('https://graph.facebook.com/me?access_token=' + encodeURIComponent(cfg.accessToken));
+      const data = await res.json().catch(() => ({}));
+      if (data.error) throw new Error(data.error.message || 'Token tidak valid');
+      return { message: 'Terhubung sebagai ' + (data.name || data.id) };
+    },
+    async call(cfg, action, p) {
+      const base = 'https://graph.facebook.com/v19.0';
+      const token = cfg.accessToken;
+      let url = '', method = 'GET', body;
+      if (action === 'me') url = base + '/me?access_token=' + encodeURIComponent(token);
+      else if (action === 'pages') url = base + '/me/accounts?access_token=' + encodeURIComponent(token);
+      else if (action === 'post') { url = base + '/' + encodeURIComponent(p.id) + '/feed?access_token=' + encodeURIComponent(token); method = 'POST'; body = { message: p.message, link: p.link }; }
+      else throw new Error('Aksi tidak dikenal: ' + action);
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const data = await res.json().catch(() => ({}));
+      if (data.error) throw new Error(data.error.message);
+      return data;
+    }
+  },
+  instagram: {
+    name: 'Instagram',
+    icon: '📸',
+    desc: 'Posting foto/video & kelola akun Instagram',
+    fields: [
+      { key: 'accessToken', label: 'Meta Access Token', placeholder: 'EAAG... (Instagram token)', help: 'Token Instagram Business/Creator dari Meta for Developers.' }
+    ],
+    async test(cfg) {
+      const res = await fetch('https://graph.facebook.com/me?access_token=' + encodeURIComponent(cfg.accessToken));
+      const data = await res.json().catch(() => ({}));
+      if (data.error) throw new Error(data.error.message || 'Token tidak valid');
+      return { message: 'Terhubung sebagai ' + (data.name || data.id) };
+    },
+    async call(cfg, action, p) {
+      const base = 'https://graph.facebook.com/v19.0';
+      const token = cfg.accessToken;
+      let url = '', method = 'GET', body;
+      if (action === 'me') url = base + '/me?access_token=' + encodeURIComponent(token);
+      else if (action === 'accounts') url = base + '/me/accounts?access_token=' + encodeURIComponent(token);
+      else throw new Error('Aksi tidak dikenal: ' + action);
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const data = await res.json().catch(() => ({}));
+      if (data.error) throw new Error(data.error.message);
+      return data;
+    }
+  },
+  tiktok: {
+    name: 'TikTok',
+    icon: '🎵',
+    desc: 'Upload & jadwalkan video TikTok',
+    fields: [
+      { key: 'accessToken', label: 'TikTok Access Token', placeholder: 'Access token dari TikTok for Developers', help: 'Token dari developers.tiktok.com (Content Posting API).' }
+    ],
+    async test() { return { message: 'Token tersimpan (tes koneksi TikTok terbatas)' }; },
+    async call(cfg, action) { throw new Error('Aksi TikTok belum diterapkan: ' + action); }
+  },
+  youtube: {
+    name: 'YouTube Reels',
+    icon: '▶️',
+    desc: 'Upload Shorts/Reels via YouTube Data API',
+    fields: [
+      { key: 'accessToken', label: 'YouTube OAuth Access Token', placeholder: 'ya29... (OAuth token)', help: 'Token OAuth dari Google Cloud Console (YouTube Data API v3).' }
+    ],
+    async test(cfg) {
+      const res = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true&access_token=' + encodeURIComponent(cfg.accessToken));
+      const data = await res.json().catch(() => ({}));
+      if (data.error) throw new Error(data.error.message || 'Token tidak valid');
+      return { message: 'Terhubung: ' + ((data.items && data.items[0] && data.items[0].snippet && data.items[0].snippet.title) || 'channel') };
+    },
+    async call(cfg, action) { throw new Error('Aksi YouTube belum diterapkan: ' + action); }
+  },
+  'chrome-devtools': {
+    name: 'Chrome DevTools',
+    icon: '🛠️',
+    desc: 'Debug & inspeksi halaman web',
+    fields: [],
+    async test() { return { message: 'Siap digunakan (tanpa kredensial)' }; },
+    async call(cfg, action) { throw new Error('Aksi DevTools belum diterapkan: ' + action); }
+  }
+};
+
+function readPluginConfigs() {
+  const s = readSettings();
+  return (s.plugins && typeof s.plugins === 'object') ? s.plugins : {};
+}
+
+function savePluginConfig(id, cfg) {
+  const s = readSettings();
+  s.plugins = s.plugins || {};
+  if (safeStorage.isEncryptionAvailable()) {
+    s.plugins[id] = { enc: true, value: safeStorage.encryptString(JSON.stringify(cfg)).toString('base64') };
+  } else {
+    s.plugins[id] = { enc: false, value: Buffer.from(JSON.stringify(cfg), 'utf8').toString('base64') };
+  }
+  writeSettings(s);
+}
+
+function loadPluginConfig(id) {
+  const s = readSettings();
+  const p = s.plugins && s.plugins[id];
+  if (!p || !p.value) return null;
+  try {
+    const buf = Buffer.from(p.value, 'base64');
+    const text = p.enc ? safeStorage.decryptString(buf) : buf.toString('utf8');
+    return JSON.parse(text);
+  } catch { return null; }
+}
+
+function pluginConnected(id) {
+  const cfg = loadPluginConfig(id);
+  return Boolean(cfg && Object.keys(cfg).length);
+}
+
+ipcMain.handle('plugins:list', () => {
+  const plugins = Object.entries(PLUGIN_DEFS).map(([id, def]) => ({
+    id, name: def.name, icon: def.icon, desc: def.desc, connected: pluginConnected(id)
+  }));
+  return { ok: true, plugins };
+});
+
+ipcMain.handle('plugins:getConfig', (event, id) => {
+  const def = PLUGIN_DEFS[id];
+  if (!def) return { ok: false, error: 'Plugin tidak dikenal.' };
+  const cfg = loadPluginConfig(id) || {};
+  const values = {};
+  for (const f of def.fields) values[f.key] = cfg[f.key] ? '********' : '';
+  return { ok: true, fields: def.fields, values, connected: pluginConnected(id) };
+});
+
+ipcMain.handle('plugins:saveConfig', (event, id, cfg) => {
+  const def = PLUGIN_DEFS[id];
+  if (!def) return { ok: false, error: 'Plugin tidak dikenal.' };
+  const prev = loadPluginConfig(id) || {};
+  const next = { ...prev };
+  for (const f of def.fields) {
+    if (cfg && cfg[f.key] && cfg[f.key] !== '********') next[f.key] = String(cfg[f.key]).trim();
+  }
+  savePluginConfig(id, next);
+  return { ok: true, connected: pluginConnected(id) };
+});
+
+ipcMain.handle('plugins:test', async (event, id) => {
+  const def = PLUGIN_DEFS[id];
+  if (!def) return { ok: false, error: 'Plugin tidak dikenal.' };
+  const cfg = loadPluginConfig(id);
+  if (!cfg || !Object.keys(cfg).length) return { ok: false, error: 'Plugin belum dikonfigurasi.' };
+  try { return { ok: true, ...(await def.test(cfg) || {}) }; }
+  catch (err) { return { ok: false, error: (err && err.message) || String(err) }; }
+});
+
+ipcMain.handle('plugins:call', async (event, id, action, params) => {
+  const def = PLUGIN_DEFS[id];
+  if (!def) return { ok: false, error: 'Plugin tidak dikenal.' };
+  const cfg = loadPluginConfig(id);
+  if (!cfg || !Object.keys(cfg).length) return { ok: false, error: 'Plugin belum dikonfigurasi. Buka Marketplace → Install → isi kredensial.' };
+  try { return { ok: true, result: await def.call(cfg, action, params || {}) }; }
+  catch (err) { return { ok: false, error: (err && err.message) || String(err) }; }
 });
 
 ipcMain.handle('models:list', async () => {

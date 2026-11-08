@@ -55,6 +55,12 @@ contextBridge.exposeInMainWorld('sahabat', {
   extSetEnabled: (id, enabled) => ipcRenderer.invoke('ext:setEnabled', id, enabled),
   extOpenDir: () => ipcRenderer.invoke('ext:openDir'),
 
+  pluginsList: () => ipcRenderer.invoke('plugins:list'),
+  pluginGetConfig: (id) => ipcRenderer.invoke('plugins:getConfig', id),
+  pluginSaveConfig: (id, cfg) => ipcRenderer.invoke('plugins:saveConfig', id, cfg),
+  pluginTest: (id) => ipcRenderer.invoke('plugins:test', id),
+  pluginCall: (id, action, params) => ipcRenderer.invoke('plugins:call', id, action, params),
+
   listModels: () => ipcRenderer.invoke('models:list'),
   startChat: (payload) => ipcRenderer.invoke('chat:start', payload),
   abortChat: (requestId) => ipcRenderer.invoke('chat:abort', requestId),
