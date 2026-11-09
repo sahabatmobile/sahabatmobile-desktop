@@ -4096,6 +4096,8 @@
 
   async function openOnboarding() {
     obStep = 1;
+    localStorage.setItem('sahabat.onboarded', '1');
+    try { api.saveSettings({ onboarded: true }); } catch { /* abaikan */ }
     const hint = $('obImportHint');
     if (hint) { hint.textContent = 'Membaca settings VS Code...'; hint.dataset.json = ''; }
     renderOnboarding();
@@ -5877,7 +5879,7 @@
     if (S.settings.autoUpdate !== false) {
       setTimeout(() => { checkUpdates(false).catch(() => {}); }, 2500);
     }
-    if (!localStorage.getItem('sahabat.onboarded')) {
+    if (!S.settings.onboarded && !localStorage.getItem('sahabat.onboarded')) {
       setTimeout(() => openOnboarding(), 700);
     }
   }

@@ -1824,7 +1824,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#0f1115',
     title: 'SahabatMobile Desktop',
-    icon: path.join(__dirname, 'build/icon.png'),
+    icon: path.join(__dirname, process.platform === 'win32' ? 'build/icon.ico' : 'build/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -2507,6 +2507,7 @@ function showAuthWindow() {
     height: 760,
     title: 'Masuk — SahabatMobile',
     autoHideMenuBar: true,
+    icon: path.join(__dirname, process.platform === 'win32' ? 'build/icon.ico' : 'build/icon.png'),
     webPreferences: {
       partition: AUTH_PARTITION,
       contextIsolation: true,
@@ -2623,7 +2624,8 @@ ipcMain.handle('settings:get', () => {
     agentApproval: ['manual', 'auto', 'full', 'custom'].includes(s.agentApproval) ? s.agentApproval : 'manual',
     modelAccessMode: ['auto', 'payg', 'hemat', 'coding', 'minimax', 'pro'].includes(s.modelAccessMode) ? s.modelAccessMode : 'auto',
     modelAccessAll: s.modelAccessAll === true,
-    modelBlockedCount: Array.isArray(s.modelBlocked) ? s.modelBlocked.length : 0
+    modelBlockedCount: Array.isArray(s.modelBlocked) ? s.modelBlocked.length : 0,
+    onboarded: s.onboarded === true
   };
 });
 
@@ -2828,6 +2830,9 @@ ipcMain.handle('settings:set', (event, payload) => {
     data.agentApproval = payload.agentApproval;
     agentApprovalMode = payload.agentApproval;
   }
+  if (typeof payload.onboarded === 'boolean') {
+    data.onboarded = payload.onboarded;
+  }
   writeSettings(data);
   if (payload.apiKey && payload.apiKey.trim()) {
     saveKey(payload.apiKey.trim());
@@ -2844,7 +2849,8 @@ ipcMain.handle('settings:set', (event, payload) => {
     agentApproval: ['manual', 'auto', 'full', 'custom'].includes(s.agentApproval) ? s.agentApproval : 'manual',
     modelAccessMode: ['auto', 'payg', 'hemat'].includes(s.modelAccessMode) ? s.modelAccessMode : 'auto',
     modelAccessAll: s.modelAccessAll === true,
-    modelBlockedCount: Array.isArray(s.modelBlocked) ? s.modelBlocked.length : 0
+    modelBlockedCount: Array.isArray(s.modelBlocked) ? s.modelBlocked.length : 0,
+    onboarded: s.onboarded === true
   };
 });
 

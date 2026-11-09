@@ -28,6 +28,7 @@
       "styles.css",
       "db.js",
       "package.json",
+      "build/**/*",
       "extensions/**/*",
       "vendor/**/*",
       "node_modules/**/*"
@@ -38,7 +39,12 @@
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "mac": {
       "target": [
