@@ -60,6 +60,17 @@ contextBridge.exposeInMainWorld('sahabat', {
   pluginSaveConfig: (id, cfg) => ipcRenderer.invoke('plugins:saveConfig', id, cfg),
   pluginTest: (id) => ipcRenderer.invoke('plugins:test', id),
   pluginCall: (id, action, params) => ipcRenderer.invoke('plugins:call', id, action, params),
+  pluginOAuthUrl: (id) => ipcRenderer.invoke('plugins:oauthUrl', id),
+  pluginOAuthCode: (id, code) => ipcRenderer.invoke('plugins:oauthCode', id, code),
+  onPluginOAuthResult: subscribe('plugins:oauthResult'),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+  schedulesList: () => ipcRenderer.invoke('schedules:list'),
+  schedulesAdd: (payload) => ipcRenderer.invoke('schedules:add', payload),
+  schedulesUpdate: (id, payload) => ipcRenderer.invoke('schedules:update', id, payload),
+  schedulesRemove: (id) => ipcRenderer.invoke('schedules:remove', id),
+  schedulesRun: (id) => ipcRenderer.invoke('schedules:run', id),
+  onScheduleRun: subscribe('schedule:run'),
 
   authCheck: () => ipcRenderer.invoke('auth:check'),
   authLogout: () => ipcRenderer.invoke('auth:logout'),

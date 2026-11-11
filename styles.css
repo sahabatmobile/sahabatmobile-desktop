@@ -3833,3 +3833,29 @@ body { display: flex; flex-direction: column; }
   .chat-hero .hero-logo svg { width: 24px; height: 24px; }
   .hero-shortcuts { margin-top: 8px; }
 }
+
+/* ---------- Dynamic UI: grafik inline laporan marketplace ---------- */
+.dyn-report { margin: 8px 0; font-size: 12px; }
+.dyn-cards { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.dyn-card { background: var(--accent-soft); border: 1px solid var(--border-2); border-radius: 8px; padding: 8px 12px; min-width: 92px; }
+.dyn-num { font-weight: 700; font-size: 14px; color: var(--accent); }
+.dyn-label { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.dyn-title { font-size: 12px; font-weight: 600; margin: 10px 0 4px; color: var(--accent-2); }
+.dyn-chart { margin: 4px 0 8px; overflow-x: auto; }
+.dyn-chart svg { max-width: 100%; height: auto; }
+
+/* ---------- Menu "+" agent (ala Trae) + lampiran gambar agent ---------- */
+.agent-plus-btn { color: var(--text); }
+.agent-plus-pop { min-width: 280px; max-height: 300px; overflow-y: auto; }
+.plus-badge {
+  width: 24px; height: 24px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+.plus-badge svg { width: 14px; height: 14px; }
+.mode-opt:hover .plus-badge { border-color: rgba(255, 255, 255, 0.45); color: #fff; }
+.plus-sep { height: 1px; margin: 6px 4px; background: var(--border); }
+.plus-caret { margin-left: auto; color: var(--muted); font-size: 13px; }
+.agent-user-imgs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.agent-user-imgs img { max-width: 150px; max-height: 110px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); }

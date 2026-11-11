@@ -445,8 +445,15 @@
                 <span id="agentModeChipLabel"></span>
                 <button id="agentModeChipClear" type="button" title="Hapus mode (kembali otomatis)">×</button>
               </div>
+              <div id="agentAttachments" class="attachments hidden"></div>
               <textarea id="agentInput" rows="3" placeholder="Minta agen memperbaiki atau membuat project di explorer aktif... (Enter kirim, Shift+Enter baris baru, ↑↓ riwayat pesan)"></textarea>
               <div class="actions">
+                <div class="mode-wrap" id="agentPlusWrap">
+                  <button id="agentPlusBtn" class="icon-btn agent-plus-btn" type="button" title="Unggah gambar, commands, plugins & skills">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                  <div id="agentPlusPop" class="mode-pop agent-plus-pop hidden"></div>
+                </div>
                 <div class="mode-wrap">
                   <button id="agentModeBtn" class="ghost small mode-btn" type="button" title="Mode Agent — Otomatis / Web Dev / VPS">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg>
@@ -517,6 +524,7 @@
                 <span id="agentStatus" class="status small"></span>
                 <button id="agentStop" class="ghost small hidden" type="button">Stop</button>
                 <button id="agentSend" class="primary small">Kirim</button>
+                <input id="agentFiles" type="file" accept="image/*" multiple class="file-hidden" />
               </div>
             </div>
           </div>
@@ -596,6 +604,7 @@
           </div>
           <div class="mk-cats" id="mkCats">
             <button class="mk-cat active" data-cat="all" type="button">All</button>
+            <button class="mk-cat" data-cat="ecommerce" type="button">E-commerce</button>
             <button class="mk-cat" data-cat="marketing" type="button">Marketing</button>
             <button class="mk-cat" data-cat="developer" type="button">Developer Tools</button>
             <button class="mk-cat" data-cat="productivity" type="button">Productivity</button>
@@ -714,6 +723,33 @@
       <div class="mini-actions">
         <button id="openPreferences" class="ghost small" type="button">Buka Preferences (import IDE &amp; keymap)</button>
       </div>
+      <div class="update-box" style="margin-top:14px">
+        <div class="update-head">
+          <span>Jadwal Otomatis</span>
+          <button id="addScheduleBtn" class="ghost small" type="button">+ Tambah</button>
+        </div>
+        <div id="scheduleList" class="hint">Memuat jadwal…</div>
+        <div id="scheduleForm" class="hidden" style="margin-top:8px">
+          <label>Nama
+            <input id="scheduleName" placeholder="Laporan Harian Shopee" autocomplete="off" />
+          </label>
+          <label>Marketplace
+            <select id="scheduleMarket">
+              <option value="shopee">Shopee</option>
+              <option value="tokopedia">Tokopedia</option>
+              <option value="all">Semua marketplace</option>
+            </select>
+          </label>
+          <label>Jam
+            <input id="scheduleTime" type="time" value="08:00" />
+          </label>
+          <div class="mini-actions">
+            <button id="scheduleSave" class="primary small" type="button">Simpan</button>
+            <button id="scheduleCancel" class="ghost small" type="button">Batal</button>
+          </div>
+        </div>
+        <p class="hint">Jadwal menjalankan laporan otomatis <strong>saat aplikasi terbuka</strong> (laptop harus nyala). Laporan terkirim sebagai notifikasi.</p>
+      </div>
       <div class="update-box">
         <div class="update-head">
           <span>Versi aplikasi <strong id="appVersion">-</strong></span>
@@ -744,16 +780,49 @@
     </div>
   </div>
 
+  <div id="scheduleModal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="scheduleModalTitle">Laporan Otomatis</h3>
+      <div id="scheduleModalBody" style="font-size:13px;max-height:60vh;overflow:auto;"></div>
+      <div class="modal-actions">
+        <button id="scheduleModalClose" class="primary">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <div id="pluginModal" class="modal hidden">
     <div class="modal-card">
       <h3 id="pluginTitle">Plugin</h3>
       <p id="pluginDesc" style="font-size:13px;color:var(--muted);margin:0 0 12px"></p>
       <div id="pluginFields"></div>
+      <div id="pluginOAuth" class="hidden" style="margin:-4px 0 10px;">
+        <button id="pluginOAuthBtn" class="ghost" type="button">🔗 Hubungkan via Browser (OAuth)</button>
+        <span class="hint" style="margin-left:8px;">Isi token otomatis lewat login TikTok.</span>
+        <div id="pluginOAuthNote" class="hint" style="margin-top:4px;font-size:11px;"></div>
+      </div>
+      <div id="pluginOAuthHelp" class="hidden" style="margin:-4px 0 10px;">
+        <a href="https://developers.tiktok.com/" target="_blank" rel="noopener" class="hint">↗ Buka Dashboard TikTok Developer (untuk memastikan Client Key &amp; Redirect URI)</a>
+      </div>
       <div id="pluginStatus" style="font-size:12px;margin-top:10px;min-height:16px"></div>
       <div class="modal-actions">
         <button id="pluginCancel" class="ghost">Batal</button>
         <button id="pluginTest" class="ghost">Tes Koneksi</button>
         <button id="pluginSave" class="primary">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tiktokCodeModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Izin TikTok</h3>
+      <p class="hint" style="margin-bottom:10px;">
+        Redirect URI desktop tetap <code>http://127.0.0.1:55793/callback/</code> (daftarkan persis di TikTok Developer). Setelah Authorize, browser menampilkan URL dengan <code>?code=...</code> di address bar (halaman mungkin "can't be reached" — itu normal). Salin <strong>seluruh URL</strong> di address bar ke kolom bawah.
+      </p>
+      <input id="tiktokCodeInput" placeholder="Kode otorisasi atau URL redirect" autocomplete="off" />
+      <div id="tiktokCodeStatus" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+      <div class="modal-actions">
+        <button id="tiktokCodeCancel" class="ghost">Batal</button>
+        <button id="tiktokCodeSubmit" class="primary">Tukar Token</button>
       </div>
     </div>
   </div>

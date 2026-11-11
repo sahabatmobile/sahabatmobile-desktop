@@ -332,6 +332,222 @@
         description: 'Daftar akun Instagram Business yang terhubung. Hanya jika plugin Instagram sudah dihubungkan.',
         parameters: { type: 'object', properties: {}, required: [] }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_shop_info',
+        description: 'Info toko Shopee (nama, status, region). Hanya jika plugin Shopee sudah dihubungkan.',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_order_list',
+        description: 'Daftar pesanan toko Shopee (30 hari terakhir secara bawaan).',
+        parameters: {
+          type: 'object',
+          properties: {
+            timeFrom: { type: 'number', description: 'Timestamp awal (Unix detik, opsional)' },
+            timeTo: { type: 'number', description: 'Timestamp akhir (Unix detik, opsional)' },
+            pageSize: { type: 'number', description: 'Jumlah per halaman (default 50)' },
+            cursor: { type: 'string', description: 'Kursor halaman berikutnya (opsional)' },
+            orderStatus: { type: 'string', description: 'Filter status: UNPAID, READY_TO_SHIP, SHIPPED, COMPLETED, CANCELLED' }
+          },
+          required: []
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_order_detail',
+        description: 'Detail pesanan Shopee berdasarkan nomor pesanan.',
+        parameters: {
+          type: 'object',
+          properties: {
+            orderSnList: { type: 'string', description: 'Nomor pesanan, pisahkan koma untuk banyak' }
+          },
+          required: ['orderSnList']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_item_list',
+        description: 'Daftar produk toko Shopee.',
+        parameters: {
+          type: 'object',
+          properties: {
+            offset: { type: 'number', description: 'Posisi mulai (default 0)' },
+            pageSize: { type: 'number', description: 'Jumlah per halaman (default 50)' },
+            itemStatus: { type: 'string', description: 'Filter status: NORMAL, BANNED, DELETED (opsional)' }
+          },
+          required: []
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_add_item',
+        description: 'Tambah produk baru ke toko Shopee.',
+        parameters: {
+          type: 'object',
+          properties: {
+            itemName: { type: 'string', description: 'Nama produk' },
+            description: { type: 'string', description: 'Deskripsi produk' },
+            price: { type: 'number', description: 'Harga produk' },
+            stock: { type: 'number', description: 'Stok awal' },
+            categoryId: { type: 'number', description: 'ID kategori Shopee' },
+            weight: { type: 'number', description: 'Berat dalam kg' }
+          },
+          required: ['itemName', 'price', 'stock', 'categoryId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_update_stock',
+        description: 'Ubah stok produk Shopee.',
+        parameters: {
+          type: 'object',
+          properties: {
+            itemId: { type: 'number', description: 'ID produk' },
+            modelId: { type: 'number', description: 'ID model/variasi (0 jika tanpa variasi)' },
+            stock: { type: 'number', description: 'Stok baru' }
+          },
+          required: ['itemId', 'stock']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_update_price',
+        description: 'Ubah harga produk Shopee.',
+        parameters: {
+          type: 'object',
+          properties: {
+            itemId: { type: 'number', description: 'ID produk' },
+            modelId: { type: 'number', description: 'ID model/variasi (0 jika tanpa variasi)' },
+            price: { type: 'number', description: 'Harga baru' }
+          },
+          required: ['itemId', 'price']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'tokopedia_products',
+        description: 'Daftar produk toko Tokopedia. Hanya jika plugin Tokopedia sudah dihubungkan.',
+        parameters: {
+          type: 'object',
+          properties: {
+            page: { type: 'number', description: 'Nomor halaman (default 1)' },
+            perPage: { type: 'number', description: 'Jumlah per halaman (default 50)' }
+          },
+          required: []
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'tokopedia_product_detail',
+        description: 'Detail satu produk Tokopedia berdasarkan ID produk.',
+        parameters: {
+          type: 'object',
+          properties: { productId: { type: 'number', description: 'ID produk' } },
+          required: ['productId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'tokopedia_active_products',
+        description: 'Daftar produk aktif toko Tokopedia dengan pencarian.',
+        parameters: {
+          type: 'object',
+          properties: {
+            rows: { type: 'number', description: 'Jumlah produk (default 50)' },
+            start: { type: 'number', description: 'Posisi mulai (default 0)' },
+            keyword: { type: 'string', description: 'Kata kunci pencarian (opsional)' }
+          },
+          required: []
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'shopee_daily_report',
+        description: 'Laporan harian toko Shopee: total pesanan, pendapatan, status pesanan, dan produk terlaris.',
+        parameters: {
+          type: 'object',
+          properties: {
+            timeFrom: { type: 'number', description: 'Timestamp awal (Unix detik, default 24 jam lalu)' },
+            timeTo: { type: 'number', description: 'Timestamp akhir (Unix detik, default sekarang)' }
+          },
+          required: []
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'tokopedia_daily_report',
+        description: 'Laporan harian toko Tokopedia: total produk, total stok, dan rata-rata harga.',
+        parameters: {
+          type: 'object',
+          properties: {
+            rows: { type: 'number', description: 'Jumlah produk (default 100)' }
+          },
+          required: []
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'marketplace_daily_report',
+        description: 'Laporan harian gabungan semua marketplace yang terhubung (Shopee & Tokopedia) dalam satu ringkasan.',
+        parameters: {
+          type: 'object',
+          properties: {
+            timeFrom: { type: 'number', description: 'Timestamp awal (Unix detik, default 24 jam lalu)' },
+            timeTo: { type: 'number', description: 'Timestamp akhir (Unix detik, default sekarang)' }
+          },
+          required: []
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'tiktok_user_info',
+        description: 'Info akun TikTok yang terhubung (nama, username, followers, jumlah video).',
+        parameters: { type: 'object', properties: {}, required: [] }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'tiktok_list_videos',
+        description: 'Daftar video TikTok akun Anda.',
+        parameters: {
+          type: 'object',
+          properties: {
+            maxCount: { type: 'number', description: 'Jumlah video (default 20)' }
+          },
+          required: []
+        }
+      }
     }
   ];
 
@@ -362,7 +578,7 @@
     tabs: [],
     active: null,
 
-    agent: { messages: [], busy: false, history: [], mode: localStorage.getItem('sahabat.agent.mode') || 'auto' },
+    agent: { messages: [], busy: false, history: [], mode: localStorage.getItem('sahabat.agent.mode') || 'auto', attachments: [] },
     snippet: 'curl',
     cloneDir: null,
     mapTarget: null,
@@ -3077,6 +3293,14 @@
     return String(text || 'Tugas agent').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Tugas agent';
   }
 
+  function agentHistorySlim(messages) {
+    return (messages || []).map((m) => {
+      if (!Array.isArray(m.content)) return m;
+      const imgs = m.content.filter((p) => p && p.type === 'image_url').length;
+      return { ...m, content: agentContentText(m.content) + (imgs ? ' [gambar dilampirkan: ' + imgs + ']' : '') };
+    });
+  }
+
   function saveCurrentAgentToHistory() {
     const msgs = (S.agent.messages || []).filter((m) => m.role !== 'system');
     if (!msgs.length) return;
@@ -3085,7 +3309,7 @@
       title: agentHistoryTitle(msgs),
       ts: Date.now(),
       target: S.target.type,
-      messages: msgs.slice(-80)
+      messages: agentHistorySlim(msgs).slice(-80)
     });
     S.agent.history = S.agent.history.slice(-20);
     saveAgentHistory();
@@ -3115,6 +3339,8 @@
     if (S.agent.busy) { toast('Tunggu agent selesai dulu.'); return; }
     saveCurrentAgentToHistory();
     S.agent.messages = [];
+    S.agent.attachments = [];
+    renderAgentAttachments();
     resetAgentLog();
     $('agentInput').value = '';
     $('agentInput').focus();
@@ -3328,6 +3554,27 @@
     if (name === 'facebook_pages') return api.pluginCall('facebook', 'pages');
     if (name === 'facebook_post') return api.pluginCall('facebook', 'post', args);
     if (name === 'instagram_accounts') return api.pluginCall('instagram', 'accounts');
+    if (name === 'shopee_shop_info') return api.pluginCall('shopee', 'get_shop_info');
+    if (name === 'shopee_order_list') return api.pluginCall('shopee', 'get_order_list', args);
+    if (name === 'shopee_order_detail') return api.pluginCall('shopee', 'get_order_detail', args);
+    if (name === 'shopee_item_list') return api.pluginCall('shopee', 'get_item_list', args);
+    if (name === 'shopee_add_item') return api.pluginCall('shopee', 'add_item', args);
+    if (name === 'shopee_update_stock') return api.pluginCall('shopee', 'update_stock', args);
+    if (name === 'shopee_update_price') return api.pluginCall('shopee', 'update_price', args);
+    if (name === 'tokopedia_products') return api.pluginCall('tokopedia', 'get_products', args);
+    if (name === 'tokopedia_product_detail') return api.pluginCall('tokopedia', 'get_product', args);
+    if (name === 'tokopedia_active_products') return api.pluginCall('tokopedia', 'get_active_products', args);
+    if (name === 'shopee_daily_report') return api.pluginCall('shopee', 'get_daily_report', args);
+    if (name === 'tokopedia_daily_report') return api.pluginCall('tokopedia', 'get_daily_report', args);
+    if (name === 'marketplace_daily_report') {
+      const out = {};
+      for (const id of ['shopee', 'tokopedia']) {
+        out[id] = await api.pluginCall(id, 'get_daily_report', args);
+      }
+      return { ok: true, result: out };
+    }
+    if (name === 'tiktok_user_info') return api.pluginCall('tiktok', 'get_user_info');
+    if (name === 'tiktok_list_videos') return api.pluginCall('tiktok', 'list_videos', args);
     return { ok: false, error: 'Tool tidak dikenal: ' + name };
   }
 
@@ -3339,7 +3586,22 @@
     run_command: { label: 'Perintah', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-5-6-5"/><path d="M12 19h8"/></svg>' },
     read_file: { label: 'Baca file', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l4 4v16H6z"/><path d="M9 13h6M9 17h6"/></svg>' },
     write_file: { label: 'Tulis file', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>' },
-    list_dir: { label: 'List folder', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' }
+    list_dir: { label: 'List folder', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' },
+    shopee_shop_info: { label: 'Shopee: info toko', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .6h9.7a1 1 0 0 0 1-.8L21 7H6"/></svg>' },
+    shopee_order_list: { label: 'Shopee: daftar pesanan', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l4 4v16H6z"/><path d="M9 13h6M9 17h6"/></svg>' },
+    shopee_order_detail: { label: 'Shopee: detail pesanan', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' },
+    shopee_item_list: { label: 'Shopee: daftar produk', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' },
+    shopee_add_item: { label: 'Shopee: tambah produk', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>' },
+    shopee_update_stock: { label: 'Shopee: ubah stok', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-5-6-5"/><path d="M12 19h8"/></svg>' },
+    shopee_update_price: { label: 'Shopee: ubah harga', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 3 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/></svg>' },
+    tokopedia_products: { label: 'Tokopedia: daftar produk', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' },
+    tokopedia_product_detail: { label: 'Tokopedia: detail produk', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' },
+    tokopedia_active_products: { label: 'Tokopedia: produk aktif', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' },
+    shopee_daily_report: { label: 'Shopee: laporan harian', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 3 5-6"/></svg>' },
+    tokopedia_daily_report: { label: 'Tokopedia: laporan harian', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 3 5-6"/></svg>' },
+    marketplace_daily_report: { label: 'Marketplace: laporan harian', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 4 3 5-6"/></svg>' },
+    tiktok_user_info: { label: 'TikTok: info akun', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 3-2 5-3 6l-1 4h-6l-1-4c-1-1-3-3-3-6a7 7 0 0 1 7-7z"/><path d="M9 21h6"/></svg>' },
+    tiktok_list_videos: { label: 'TikTok: daftar video', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' }
   };
 
   function toolArgsPreview(name, args) {
@@ -3427,8 +3689,89 @@
     return el;
   }
 
+  // ---------- Dynamic UI: grafik inline ----------
+  function dynHBars(data, opts) {
+    if (!data || !data.length) return '';
+    opts = opts || {};
+    const width = opts.width || 520;
+    const rowH = opts.rowH || 26;
+    const labelW = opts.labelW || 150;
+    const valueW = opts.valueW || 56;
+    const barMax = Math.max(40, width - labelW - valueW - 8);
+    const max = Math.max.apply(null, data.map((d) => Number(d.value) || 0).concat([1]));
+    const color = opts.color || '#5b8def';
+    const height = data.length * rowH;
+    let out = '<svg viewBox="0 0 ' + width + ' ' + height + '" width="100%" role="img" style="display:block;max-width:' + width + 'px;font-family:inherit;">';
+    data.forEach((d, i) => {
+      const y = i * rowH;
+      const v = Number(d.value) || 0;
+      const w = Math.max(2, Math.round((v / max) * barMax));
+      const label = String(d.label || '');
+      const short = label.length > 22 ? label.slice(0, 22) + '…' : label;
+      out += '<text x="' + (labelW - 8) + '" y="' + (y + rowH / 2 + 4) + '" text-anchor="end" font-size="11" fill="currentColor" opacity="0.85">' + esc(short) + '</text>';
+      out += '<rect x="' + labelW + '" y="' + (y + (rowH - 12) / 2) + '" width="' + w + '" height="12" rx="3" fill="' + color + '"></rect>';
+      out += '<text x="' + (labelW + w + 6) + '" y="' + (y + rowH / 2 + 4) + '" font-size="11" fill="currentColor">' + esc(String(v)) + '</text>';
+    });
+    out += '</svg>';
+    return out;
+  }
+
+  function dynCard(num, label) {
+    return '<div class="dyn-card"><div class="dyn-num">' + esc(String(num)) + '</div><div class="dyn-label">' + esc(label) + '</div></div>';
+  }
+
+  function dynShopeeReport(d) {
+    if (!d) return '';
+    let h = '<div class="dyn-report">';
+    h += '<div class="dyn-cards">' +
+      dynCard(d.totalOrders || 0, 'Pesanan') +
+      dynCard('Rp ' + Number(d.totalAmount || 0).toLocaleString('id-ID'), 'Pendapatan') +
+      '</div>';
+    const status = Object.entries(d.byStatus || {});
+    if (status.length) {
+      h += '<div class="dyn-title">Status Pesanan</div>';
+      h += '<div class="dyn-chart">' + dynHBars(status.map(([label, value]) => ({ label, value })), { color: '#5b8def' }) + '</div>';
+    }
+    const top = d.topItems || [];
+    if (top.length) {
+      h += '<div class="dyn-title">Produk Terlaris</div>';
+      h += '<div class="dyn-chart">' + dynHBars(top.map((t) => ({ label: t.name, value: t.qty })), { color: '#22c55e' }) + '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function dynTokopediaReport(d) {
+    if (!d) return '';
+    let h = '<div class="dyn-report">';
+    h += '<div class="dyn-cards">' +
+      dynCard(d.totalProducts || 0, 'Produk') +
+      dynCard(d.totalStock || 0, 'Total Stok') +
+      dynCard('Rp ' + Number(d.averagePrice || 0).toLocaleString('id-ID'), 'Rata-rata Harga') +
+      '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function dynamicReportHTML(name, result) {
+    const data = result && result.result ? result.result : null;
+    if (!data) return '';
+    if (name === 'shopee_daily_report') return dynShopeeReport(data);
+    if (name === 'tokopedia_daily_report') return dynTokopediaReport(data);
+    if (name === 'marketplace_daily_report') {
+      let h = '';
+      for (const id of Object.keys(data)) {
+        const r = data[id];
+        if (!r || !r.ok || !r.result) continue;
+        h += id === 'shopee' ? dynShopeeReport(r.result) : dynTokopediaReport(r.result);
+      }
+      return h;
+    }
+    return '';
+  }
+
   function addAgentStep(name, args) {
-    const meta = TOOL_META[name] || { label: name, icon: TOOL_META.run_command.icon };
+    const meta = TOOL_META[name] || { label: String(name).replace(/[_-]+/g, ' '), icon: TOOL_META.run_command.icon };
     const el = document.createElement('div');
     el.className = 'agent-step agent-step-running agent-step--' + String(name || 'other').replace(/[^a-z0-9]+/gi, '-');
     el.innerHTML =
@@ -3473,6 +3816,15 @@
       const items = result.items || [];
       outText = items.slice(0, 200).map((i) => (i.type === 'dir' ? '[dir]  ' : '[file] ') + i.name).join('\n') || '(folder kosong)';
       if (result.path) outText = result.path + '\n\n' + outText;
+    } else if (name === 'shopee_daily_report' || name === 'tokopedia_daily_report' || name === 'marketplace_daily_report') {
+      const dyn = dynamicReportHTML(name, result);
+      if (dyn) {
+        body.innerHTML = dyn;
+        body.classList.remove('hidden');
+        agentScrollToEnd('auto');
+        return;
+      }
+      try { outText = JSON.stringify(result, null, 2); } catch { outText = String(result); }
     } else if (result && result.ok === false) {
       outText = String(result.error || 'Gagal');
     } else {
@@ -3516,7 +3868,8 @@
   async function sendAgent() {
     const input = $('agentInput');
     const text = input.value.trim();
-    if (!text || S.agent.busy) return;
+    const images = (S.agent.attachments || []).slice();
+    if ((!text && !images.length) || S.agent.busy) return;
     if (!S.settings.hasKey) { openSettings(); return; }
     if (S.target.type === 'local' && !S.local.root) { toast('Buka folder kerja dulu.'); return; }
     if (S.target.type !== 'local' && !remoteSession()) { toast('Koneksi remote tidak aktif.'); return; }
@@ -3524,11 +3877,18 @@
     stopVoiceChat();
     input.value = '';
     updateAgentModeChip();
+    S.agent.attachments = [];
+    renderAgentAttachments();
     S.agent.busy = true;
     $('agentSend').classList.add('hidden');
     setAgentStatus('Memikirkan…');
-    S.agent.messages.push({ role: 'user', content: text });
-    agentLog('<div class="agent-user">' + esc(text) + '</div>', 'user');
+    const contentParts = [];
+    if (text) contentParts.push({ type: 'text', text });
+    for (const img of images) contentParts.push({ type: 'image_url', image_url: { url: img.dataUrl } });
+    const userContent = images.length ? contentParts : text;
+    S.agent.messages.push({ role: 'user', content: userContent });
+    const imgHtml = images.length ? '<div class="agent-user-imgs">' + images.map((i) => '<img src="' + i.dataUrl + '" alt="lampiran" />').join('') + '</div>' : '';
+    agentLog('<div class="agent-user">' + esc(text) + imgHtml + '</div>', 'user');
 
     const messages = [{ role: 'system', content: agentSystemPrompt(text) }, ...S.agent.messages];
     let loops = 0;
@@ -4001,6 +4361,139 @@
     return html;
   }
 
+  // ---------- Agent: tombol "+" ala Trae (unggah gambar, commands, plugins, skills) ----------
+  const PLUS_ICONS = {
+    image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+    commands: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+    plugins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>',
+    skills: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+  };
+  let agentPlusLevel = 'main';
+
+  function plusBadge(icon, glyph) {
+    return '<span class="plus-badge">' + (icon ? PLUS_ICONS[icon] : esc(glyph || '')) + '</span>';
+  }
+
+  function plusBackBtn() {
+    return '<button class="mode-opt plus-opt" data-plus-back="1" type="button">' +
+      '<span class="plus-badge">‹</span><span class="ao-text"><span class="ao-title">Kembali</span></span></button>';
+  }
+
+  async function renderAgentPlusPop() {
+    const pop = $('agentPlusPop');
+    if (!pop) return;
+    if (agentPlusLevel === 'commands') {
+      pop.innerHTML = '<div class="mode-head">Commands</div>' + plusBackBtn() +
+        agentTasksForMode().map((t) =>
+          '<button class="mode-opt plus-opt" data-plus-cmd="' + esc(t.prompt) + '" type="button">' +
+          '<span class="plus-badge">' + PLUS_ICONS.commands + '</span>' +
+          '<span class="ao-text"><span class="ao-title">' + esc(t.label) + '</span>' +
+          '<span class="ao-desc">' + esc(t.desc) + '</span></span></button>').join('');
+      return;
+    }
+    if (agentPlusLevel === 'skills') {
+      const installed = new Set(S.installedSkills || []);
+      pop.innerHTML = '<div class="mode-head">Skills</div>' + plusBackBtn() +
+        (MARKETPLACE.skills || []).map((s) =>
+          '<button class="mode-opt plus-opt" data-plus-skill="' + esc(s.id) + '" type="button">' +
+          '<span class="plus-badge">' + PLUS_ICONS.skills + '</span>' +
+          '<span class="ao-text"><span class="ao-title">' + esc((s.icon || '') + ' ' + s.name) + '</span>' +
+          '<span class="ao-desc">' + esc(s.desc) + (installed.has(s.id) ? ' · terpasang' : '') + '</span></span></button>').join('');
+      return;
+    }
+    if (agentPlusLevel === 'plugins') {
+      const connected = new Set();
+      try {
+        const r = await api.pluginsList();
+        if (r && r.ok) (r.plugins || []).forEach((p) => { if (p.connected) connected.add(p.id); });
+      } catch { /* abaikan */ }
+      pop.innerHTML = '<div class="mode-head">Plugins</div>' + plusBackBtn() +
+        (MARKETPLACE.plugins || []).map((p) =>
+          '<button class="mode-opt plus-opt" data-plus-plugin="' + esc(p.id) + '" type="button">' +
+          '<span class="plus-badge">' + PLUS_ICONS.plugins + '</span>' +
+          '<span class="ao-text"><span class="ao-title">' + esc((p.icon || '') + ' ' + p.name) + '</span>' +
+          '<span class="ao-desc">' + esc(p.desc) + (connected.has(p.id) ? ' · terhubung' : '') + '</span></span></button>').join('');
+      return;
+    }
+    pop.innerHTML =
+      '<button class="mode-opt plus-opt" data-plus-text="@" type="button">' + plusBadge(null, '@') +
+      '<span class="ao-text"><span class="ao-title">Gunakan @ untuk referensi konten</span></span></button>' +
+      '<button class="mode-opt plus-opt" data-plus-text="/" type="button">' + plusBadge(null, '/') +
+      '<span class="ao-text"><span class="ao-title">/ untuk commands &amp; skills</span></span></button>' +
+      '<button class="mode-opt plus-opt" data-plus-upload="1" type="button">' + plusBadge('image') +
+      '<span class="ao-text"><span class="ao-title">Unggah gambar</span><span class="ao-desc">Tempel Ctrl+V juga bisa</span></span></button>' +
+      '<div class="plus-sep"></div>' +
+      '<button class="mode-opt plus-opt" data-plus-level="commands" type="button">' + plusBadge('commands') +
+      '<span class="ao-text"><span class="ao-title">Commands</span></span><span class="plus-caret">›</span></button>' +
+      '<button class="mode-opt plus-opt" data-plus-level="plugins" type="button">' + plusBadge('plugins') +
+      '<span class="ao-text"><span class="ao-title">Plugins</span></span><span class="plus-caret">›</span></button>' +
+      '<button class="mode-opt plus-opt" data-plus-level="skills" type="button">' + plusBadge('skills') +
+      '<span class="ao-text"><span class="ao-title">Skills</span></span><span class="plus-caret">›</span></button>';
+  }
+
+  function openAgentPlus() {
+    agentPlusLevel = 'main';
+    renderAgentPlusPop();
+    const pop = $('agentPlusPop');
+    if (pop) pop.classList.remove('hidden');
+  }
+
+  function closeAgentPlus() {
+    const pop = $('agentPlusPop');
+    if (pop) pop.classList.add('hidden');
+  }
+
+  function insertAgentText(t) {
+    const input = $('agentInput');
+    if (!input) return;
+    const s = input.selectionStart == null ? input.value.length : input.selectionStart;
+    const epos = input.selectionEnd == null ? s : input.selectionEnd;
+    input.value = input.value.slice(0, s) + t + input.value.slice(epos);
+    input.focus();
+    input.setSelectionRange(s + t.length, s + t.length);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function renderAgentAttachments() {
+    const box = $('agentAttachments');
+    if (!box) return;
+    box.innerHTML = '';
+    box.classList.toggle('hidden', !(S.agent.attachments || []).length);
+    for (const a of S.agent.attachments || []) {
+      const item = document.createElement('div');
+      item.className = 'attachment';
+      item.innerHTML =
+        '<img alt="' + esc(a.name) + '" src="' + a.dataUrl + '" />' +
+        '<span class="attachment-size">' + Math.max(1, Math.round(a.size / 1024)) + ' KB</span>' +
+        '<button class="remove-attachment" type="button" title="Hapus gambar">&times;</button>';
+      item.querySelector('.remove-attachment').addEventListener('click', () => {
+        S.agent.attachments = S.agent.attachments.filter((x) => x.id !== a.id);
+        renderAgentAttachments();
+      });
+      box.appendChild(item);
+    }
+  }
+
+  function addAgentImages(list) {
+    const files = Array.from(list || []).filter((f) => f && /^image\//.test(f.type));
+    if (!files.length) return;
+    S.agent.attachments = S.agent.attachments || [];
+    for (const file of files) {
+      if (file.size > 8 * 1024 * 1024) {
+        toast('Gambar ' + (file.name || '') + ' terlalu besar (maks 8 MB).');
+        continue;
+      }
+      const id = 'att-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8);
+      const reader = new FileReader();
+      reader.onload = () => {
+        S.agent.attachments.push({ id, name: file.name || 'gambar.png', size: file.size, dataUrl: String(reader.result || '') });
+        renderAgentAttachments();
+      };
+      reader.onerror = () => toast('Gagal membaca gambar.');
+      reader.readAsDataURL(file);
+    }
+  }
+
   // ---------- Panduan Maintenance VPS ----------
   const VPS_GUIDE_TOOLS = [
     'server_status', 'firewall_status', 'firewall_allow', 'firewall_deny', 'service_restart',
@@ -4174,11 +4667,16 @@
   const MARKETPLACE = {
     plugins: [
       { id: 'facebook', name: 'Facebook', desc: 'Posting ke Halaman & Profil via Meta Graph API', icon: '📘', cat: 'marketing', badge: 'Free' },
-      { id: 'tiktok', name: 'TikTok', desc: 'Upload & jadwalkan video TikTok', icon: '🎵', cat: 'marketing', badge: 'Free' },
+      { id: 'tiktok', name: 'TikTok', desc: 'Upload & jadwalkan video TikTok (OAuth)', icon: '🎵', cat: 'marketing', badge: 'Free' },
       { id: 'youtube', name: 'YouTube Reels', desc: 'Upload Shorts/Reels via YouTube Data API', icon: '▶️', cat: 'marketing', badge: 'Free' },
       { id: 'cloudflare', name: 'Cloudflare', desc: 'Kelola DNS, firewall, dan cache Cloudflare', icon: '☁️', cat: 'developer', badge: 'Free' },
       { id: 'chrome-devtools', name: 'Chrome DevTools', desc: 'Debug & inspeksi halaman web', icon: '🛠️', cat: 'developer', badge: 'Free' },
-      { id: 'instagram', name: 'Instagram', desc: 'Posting foto/video & kelola akun Instagram', icon: '📸', cat: 'marketing', badge: 'Free' }
+      { id: 'instagram', name: 'Instagram', desc: 'Posting foto/video & kelola akun Instagram', icon: '📸', cat: 'marketing', badge: 'Free' },
+      { id: 'shopee', name: 'Shopee', desc: 'Pesanan, produk, stok & harga toko Shopee', icon: '🛒', cat: 'ecommerce', badge: 'Free' },
+      { id: 'tokopedia', name: 'Tokopedia', desc: 'Produk & kategori toko Tokopedia', icon: '🟢', cat: 'ecommerce', badge: 'Free' },
+      { id: 'bukalapak', name: 'Bukalapak', desc: 'Produk & pesanan Bukalapak', icon: '🛍️', cat: 'ecommerce', badge: 'Free' },
+      { id: 'lazada', name: 'Lazada', desc: 'Produk & pesanan Lazada', icon: '🟠', cat: 'ecommerce', badge: 'Free' },
+      { id: 'blibli', name: 'Blibli', desc: 'Produk & pesanan Blibli', icon: '🔵', cat: 'ecommerce', badge: 'Free' }
     ],
     skills: [
       { id: 'ide-konten', name: 'Ide Konten', desc: 'Generate 10 ide konten marketing sesuai niche & tren', icon: '💡', cat: 'marketing', badge: 'Free', prompt: 'Buatkan 10 ide konten marketing yang relevan dengan niche saya. Tanyakan dulu niche dan target audiens.' },
@@ -4186,7 +4684,11 @@
       { id: 'jadwal-posting', name: 'Jadwal Posting', desc: 'Susun jadwal posting mingguan', icon: '📅', cat: 'marketing', badge: 'Free', prompt: 'Susun jadwal posting mingguan untuk media sosial saya. Tanyakan dulu platform dan frekuensi posting.' },
       { id: 'kalender-konten', name: 'Kalender Konten', desc: 'Buat kalender konten sebulan penuh', icon: '🗓️', cat: 'marketing', badge: 'Free', prompt: 'Buatkan kalender konten sebulan penuh. Tanyakan dulu niche, platform, dan tanggal penting.' },
       { id: 'template-konten', name: 'Template Konten', desc: 'Template carousel, reel, dan video pendek', icon: '📄', cat: 'content', badge: 'Free', prompt: 'Buatkan template konten (carousel/reel/video pendek) untuk topik saya.' },
-      { id: 'analitik', name: 'Analitik Sosmed', desc: 'Ringkas performa & sarankan perbaikan', icon: '📊', cat: 'marketing', badge: 'Free', prompt: 'Ringkaskan performa media sosial saya dan sarankan perbaikan. Tanyakan dulu data atau akses analytics.' }
+      { id: 'analitik', name: 'Analitik Sosmed', desc: 'Ringkas performa & sarankan perbaikan', icon: '📊', cat: 'marketing', badge: 'Free', prompt: 'Ringkaskan performa media sosial saya dan sarankan perbaikan. Tanyakan dulu data atau akses analytics.' },
+      { id: 'shopee-listing', name: 'Shopee Listing Optimizer', desc: 'Optimalkan judul & deskripsi produk Shopee', icon: '🛒', cat: 'ecommerce', badge: 'Free', prompt: 'Optimalkan judul dan deskripsi produk saya agar laku di Shopee: gunakan keyword populer, struktur jelas, dan highlight keunggulan. Tanyakan dulu nama produk, kategori, dan keunggulannya.' },
+      { id: 'tokopedia-listing', name: 'Tokopedia Product Description', desc: 'Tulis deskripsi produk Tokopedia yang SEO', icon: '🟢', cat: 'ecommerce', badge: 'Free', prompt: 'Tulis deskripsi produk Tokopedia yang ramah SEO dan persuasif. Tanyakan dulu spesifikasi produk, manfaat, dan target pembeli.' },
+      { id: 'marketplace-foto', name: 'Deskripsi Produk Marketplace', desc: 'Buat deskripsi siap pasang untuk semua marketplace', icon: '🏷️', cat: 'ecommerce', badge: 'Free', prompt: 'Buatkan deskripsi produk siap pasang untuk Shopee, Tokopedia, Bukalapak, Lazada, dan Blibli. Tanyakan dulu detail produk, harga, dan promo.' },
+      { id: 'laporan-harian', name: 'Laporan Harian', desc: 'Rekap pesanan & pendapatan toko', icon: '📊', cat: 'ecommerce', badge: 'Free', prompt: 'Buatkan laporan harian toko saya: total pesanan, pendapatan, status pesanan, dan produk terlaris. Gunakan plugin marketplace yang terhubung (Shopee/Tokopedia), lalu rangkum dengan jelas dan berikan saran tindakan.' }
     ],
     mcp: [
       { id: 'mcp-fb', name: 'Facebook MCP', desc: 'Sambungkan agent ke Facebook via MCP server', icon: '🔌', cat: 'marketing', badge: 'Local' },
@@ -4316,6 +4818,8 @@
       }
       $('pluginStatus').textContent = r.connected ? 'Status: terhubung' : 'Status: belum terhubung';
       $('pluginStatus').style.color = r.connected ? 'var(--accent)' : 'var(--muted)';
+      if (r.oauth) { $('pluginOAuth').classList.remove('hidden'); $('pluginOAuthHelp').classList.remove('hidden'); }
+      else { $('pluginOAuth').classList.add('hidden'); $('pluginOAuthHelp').classList.add('hidden'); }
     } else {
       $('pluginStatus').textContent = (r && r.error) || 'Gagal memuat konfigurasi.';
       $('pluginStatus').style.color = '#ef4444';
@@ -4346,8 +4850,11 @@
 
   async function testPluginConfig() {
     if (!pluginConfigId) return;
-    $('pluginStatus').textContent = 'Menguji koneksi...';
+    const values = {};
+    document.querySelectorAll('#pluginFields input[data-field]').forEach((inp) => { values[inp.dataset.field] = inp.value; });
+    $('pluginStatus').textContent = 'Menyimpan & menguji koneksi...';
     $('pluginStatus').style.color = 'var(--muted)';
+    await api.pluginSaveConfig(pluginConfigId, values);
     const r = await api.pluginTest(pluginConfigId);
     if (r && r.ok) {
       $('pluginStatus').textContent = '✓ ' + (r.message || 'Koneksi berhasil');
@@ -4356,6 +4863,64 @@
       $('pluginStatus').textContent = '✗ ' + ((r && r.error) || 'Gagal');
       $('pluginStatus').style.color = '#ef4444';
     }
+  }
+
+  async function startPluginOAuth() {
+    if (!pluginConfigId) return;
+    const values = {};
+    document.querySelectorAll('#pluginFields input[data-field]').forEach((inp) => { values[inp.dataset.field] = inp.value; });
+    $('pluginStatus').textContent = 'Menyimpan kredensial...';
+    $('pluginStatus').style.color = 'var(--muted)';
+    await api.pluginSaveConfig(pluginConfigId, values);
+    const r = await api.pluginOAuthUrl(pluginConfigId);
+    if (!r || !r.ok) {
+      $('pluginStatus').textContent = '✗ ' + ((r && r.error) || 'Gagal membuat URL otorisasi.');
+      $('pluginStatus').style.color = '#ef4444';
+      return;
+    }
+    const note = $('pluginOAuthNote');
+    if (note && r.redirectUri) {
+      note.innerHTML = 'Redirect URI (daftarkan PERSIS ini di TikTok Developer → Login Kit → Redirect URI): <code>' + esc(r.redirectUri) + '</code>' +
+        '<br>URL otorisasi: <code style="word-break:break-all;font-size:10px;">' + esc(r.url) + '</code>' +
+        '<br><span style="opacity:.75;">Port tetap 55793. TikTok tidak menerima wildcard <code>127.0.0.1:*</code>.</span>';
+    }
+    $('pluginStatus').textContent = 'Menunggu otorisasi di browser...';
+    $('pluginStatus').style.color = 'var(--muted)';
+    await api.openExternal(r.url);
+  }
+
+  async function submitTikTokCode() {
+    const raw = ($('tiktokCodeInput').value || '').trim();
+    if (!raw) return;
+    let code = raw;
+    try {
+      if (/^https?:\/\//i.test(raw)) {
+        const u = new URL(raw);
+        const c = u.searchParams.get('code');
+        if (c) code = c;
+      } else {
+        const m = raw.match(/code=([^&]+)/);
+        if (m) code = decodeURIComponent(m[1]);
+      }
+    } catch { /* pakai raw */ }
+    code = decodeURIComponent(code);
+    $('tiktokCodeStatus').textContent = 'Menukar kode...';
+    $('tiktokCodeStatus').style.color = 'var(--muted)';
+    const r = await api.pluginOAuthCode(pluginConfigId, code);
+    if (r && r.ok) {
+      $('tiktokCodeModal').classList.add('hidden');
+      $('pluginStatus').textContent = '✓ Terhubung. Token tersimpan otomatis.';
+      $('pluginStatus').style.color = 'var(--accent)';
+      await openPluginConfig(pluginConfigId);
+      toast('Token TikTok tersimpan.');
+    } else {
+      $('tiktokCodeStatus').textContent = '✗ ' + ((r && r.error) || 'Gagal menukar kode.');
+      $('tiktokCodeStatus').style.color = '#ef4444';
+    }
+  }
+
+  function closeTikTokCode() {
+    $('tiktokCodeModal').classList.add('hidden');
   }
 
   function useMarketplaceSkill(it) {
@@ -5111,6 +5676,7 @@
         ? ('Masuk sebagai ' + (r.email || 'akun Sahabat'))
         : 'Belum masuk.';
     }).catch(() => { $('accountEmail').textContent = 'Belum masuk.'; });
+    loadSchedules();
     $('settingsModal').classList.remove('hidden');
     setTimeout(() => $('apiKeyInput').focus(), 50);
   }
@@ -5132,6 +5698,125 @@
     try { S.editor && S.editor.setTheme('ace/theme/' + theme); } catch {}
     $('settingsModal').classList.add('hidden');
     if (S.settings.hasKey) loadModels();
+  }
+
+  // ---------- Jadwal Otomatis ----------
+  let scheduleList = [];
+
+  function fmtScheduleTime(iso) {
+    if (!iso) return '-';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch { return '-'; }
+  }
+
+  function scheduleMarketLabel(id) {
+    if (id === 'all') return 'Semua marketplace';
+    if (id === 'shopee') return 'Shopee';
+    if (id === 'tokopedia') return 'Tokopedia';
+    return id;
+  }
+
+  function renderSchedules() {
+    const box = $('scheduleList');
+    if (!box) return;
+    if (!scheduleList.length) {
+      box.innerHTML = '<span class="hint">Belum ada jadwal. Klik <strong>+ Tambah</strong> untuk membuat laporan otomatis.</span>';
+      return;
+    }
+    box.innerHTML = '';
+    for (const s of scheduleList) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid var(--color-ink-200);font-size:0.8125rem;';
+      row.innerHTML =
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:600;">' + esc(s.name) + '</div>' +
+          '<div class="hint" style="font-size:0.75rem;">' + esc(scheduleMarketLabel(s.marketplace)) + ' • Tiap hari ' + esc(s.time) + (s.lastRun ? ' • Terakhir: ' + fmtScheduleTime(s.lastRun) : '') + '</div>' +
+        '</div>' +
+        '<label class="mini-check" style="white-space:nowrap;"><input type="checkbox" data-schedule-toggle="' + esc(s.id) + '"' + (s.enabled ? ' checked' : '') + ' /> Aktif</label>' +
+        '<button class="ghost small" data-schedule-run="' + esc(s.id) + '" type="button">Jalankan</button>' +
+        '<button class="ghost small" data-schedule-del="' + esc(s.id) + '" type="button">Hapus</button>';
+      box.appendChild(row);
+    }
+    box.querySelectorAll('[data-schedule-toggle]').forEach((cb) => {
+      cb.addEventListener('change', async () => {
+        await api.schedulesUpdate(cb.dataset.scheduleToggle, { enabled: cb.checked });
+        await loadSchedules();
+      });
+    });
+    box.querySelectorAll('[data-schedule-run]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        btn.textContent = 'Memproses…';
+        await api.schedulesRun(btn.dataset.scheduleRun);
+        await loadSchedules();
+        toast('Laporan dijalankan — cek notifikasi.');
+      });
+    });
+    box.querySelectorAll('[data-schedule-del]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await api.schedulesRemove(btn.dataset.scheduleDel);
+        await loadSchedules();
+      });
+    });
+  }
+
+  async function loadSchedules() {
+    const box = $('scheduleList');
+    if (!box) return;
+    try {
+      const r = await api.schedulesList();
+      scheduleList = (r && r.schedules) || [];
+      renderSchedules();
+    } catch {
+      box.innerHTML = '<span class="hint">Gagal memuat jadwal.</span>';
+    }
+  }
+
+  function openScheduleForm() {
+    $('scheduleForm').classList.remove('hidden');
+    setTimeout(() => $('scheduleName').focus(), 50);
+  }
+
+  function closeScheduleForm() {
+    $('scheduleForm').classList.add('hidden');
+    $('scheduleName').value = '';
+    $('scheduleTime').value = '08:00';
+    $('scheduleMarket').value = 'shopee';
+  }
+
+  async function saveScheduleForm() {
+    const name = $('scheduleName').value.trim() || 'Jadwal Otomatis';
+    const marketplace = $('scheduleMarket').value;
+    const time = $('scheduleTime').value || '08:00';
+    await api.schedulesAdd({ name, marketplace, time, enabled: true });
+    closeScheduleForm();
+    await loadSchedules();
+    toast('Jadwal ditambahkan.');
+  }
+
+  function renderReportSummary(id, res) {
+    if (!res) return '';
+    if (id === 'shopee') return dynShopeeReport(res);
+    if (id === 'tokopedia') return dynTokopediaReport(res);
+    return '<pre style="white-space:pre-wrap;">' + esc(JSON.stringify(res, null, 2)) + '</pre>';
+  }
+
+  function showScheduleResult(d) {
+    const s = (d && d.schedule) || {};
+    const title = $('scheduleModalTitle');
+    const body = $('scheduleModalBody');
+    if (!body) return;
+    if (title) title.textContent = s.name || 'Laporan Otomatis';
+    let html = '';
+    if (d && d.error) html += '<p style="color:#ef4444">Gagal: ' + esc(d.error) + '</p>';
+    for (const [id, r] of Object.entries((d && d.results) || {})) {
+      html += '<h4 style="margin:10px 0 4px;">' + esc(scheduleMarketLabel(id)) + '</h4>';
+      if (!r || !r.ok) { html += '<p class="hint">' + esc((r && r.error) || 'Gagal') + '</p>'; continue; }
+      html += renderReportSummary(id, r.result);
+    }
+    body.innerHTML = html;
+    $('scheduleModal').classList.remove('hidden');
   }
 
   let keyDetectTimer = null;
@@ -5327,6 +6012,10 @@
     document.querySelectorAll('.openSettings').forEach((btn) => btn.addEventListener('click', openSettings));
     $('cancelSettings').addEventListener('click', () => $('settingsModal').classList.add('hidden'));
     $('saveSettings').addEventListener('click', saveSettings);
+    $('addScheduleBtn').addEventListener('click', openScheduleForm);
+    $('scheduleCancel').addEventListener('click', closeScheduleForm);
+    $('scheduleSave').addEventListener('click', saveScheduleForm);
+    $('scheduleModalClose').addEventListener('click', () => $('scheduleModal').classList.add('hidden'));
     $('logoutBtn').addEventListener('click', async () => {
       if (!confirm('Keluar dari akun Sahabat?')) return;
       await api.authLogout();
@@ -5414,6 +6103,9 @@
     $('pluginCancel').addEventListener('click', closePluginConfig);
     $('pluginSave').addEventListener('click', savePluginConfig);
     $('pluginTest').addEventListener('click', testPluginConfig);
+    $('pluginOAuthBtn').addEventListener('click', startPluginOAuth);
+    $('tiktokCodeCancel').addEventListener('click', closeTikTokCode);
+    $('tiktokCodeSubmit').addEventListener('click', submitTikTokCode);
     $('pluginModal').addEventListener('click', (e) => { if (e.target.id === 'pluginModal') closePluginConfig(); });
     $('extFilter').addEventListener('change', (e) => { S.extFilter = e.target.value; renderExtensions(); });
     $('extRefreshSide').addEventListener('click', async () => {
@@ -5517,6 +6209,44 @@
 
     $('agentSend').addEventListener('click', sendAgent);
     $('agentStop').addEventListener('click', stopAgent);
+    $('agentPlusBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pop = $('agentPlusPop');
+      if (!pop) return;
+      if (pop.classList.contains('hidden')) openAgentPlus(); else closeAgentPlus();
+    });
+    $('agentPlusPop').addEventListener('click', (e) => {
+      const back = e.target.closest('[data-plus-back]');
+      if (back) { agentPlusLevel = 'main'; renderAgentPlusPop(); return; }
+      const lvl = e.target.closest('[data-plus-level]');
+      if (lvl) { agentPlusLevel = lvl.dataset.plusLevel; renderAgentPlusPop(); return; }
+      const txt = e.target.closest('[data-plus-text]');
+      if (txt) { closeAgentPlus(); insertAgentText(txt.dataset.plusText); return; }
+      const up = e.target.closest('[data-plus-upload]');
+      if (up) { closeAgentPlus(); $('agentFiles').click(); return; }
+      const cmd = e.target.closest('[data-plus-cmd]');
+      if (cmd) { closeAgentPlus(); applyAgentTask(cmd.dataset.plusCmd); return; }
+      const plug = e.target.closest('[data-plus-plugin]');
+      if (plug) { closeAgentPlus(); switchView('workspace'); openPluginConfig(plug.dataset.plusPlugin); return; }
+      const skill = e.target.closest('[data-plus-skill]');
+      if (skill) {
+        const it = (MARKETPLACE.skills || []).find((x) => x.id === skill.dataset.plusSkill);
+        closeAgentPlus();
+        if (it) useMarketplaceSkill(it);
+      }
+    });
+    $('agentFiles').addEventListener('change', (e) => {
+      addAgentImages(e.target.files);
+      e.target.value = '';
+    });
+    $('agentInput').addEventListener('paste', (e) => {
+      const files = e.clipboardData && e.clipboardData.files;
+      if (!files || !files.length) return;
+      if (Array.from(files).some((f) => /^image\//.test(f.type))) {
+        e.preventDefault();
+        addAgentImages(files);
+      }
+    });
     $('agentClear').addEventListener('click', () => {
       if (S.agent.busy) { toast('Tunggu agent selesai dulu.'); return; }
       S.agent.messages = [];
@@ -5657,6 +6387,7 @@
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#agentModePop') && !e.target.closest('#agentModeBtn')) closeAgentModePop();
       if (!e.target.closest('#agentTaskPop') && !e.target.closest('#agentTaskBtn')) closeAgentTaskPop();
+      if (!e.target.closest('#agentPlusPop') && !e.target.closest('#agentPlusBtn')) closeAgentPlus();
     });
 
     $('termNewTab').addEventListener('click', () => { newLocalTerminal(S.local.root); });
@@ -5772,6 +6503,22 @@
   async function init() {
     aceSetup();
     bind();
+    api.onScheduleRun((d) => {
+      showScheduleResult(d);
+      loadSchedules();
+    });
+    api.onPluginOAuthResult((d) => {
+      if (!d) return;
+      const status = $('pluginStatus');
+      if (d.ok) {
+        if (status) { status.textContent = '✓ Terhubung. Token tersimpan otomatis.'; status.style.color = 'var(--accent)'; }
+        if (d.id) openPluginConfig(d.id);
+        toast('Token TikTok tersimpan.');
+      } else if (status) {
+        status.textContent = '✗ ' + (d.error || 'Otorisasi gagal');
+        status.style.color = '#ef4444';
+      }
+    });
     setUserMode(S.userMode);
     applySideWidth(S.ui.sideWidth, false);
     applyAgentWidth(S.ui.agentWidth, false);

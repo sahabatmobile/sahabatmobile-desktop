@@ -1,8 +1,9 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, dialog, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, shell, clipboard, dialog, Menu, session, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
+const http = require('http');
 const { spawn, execFileSync, spawnSync } = require('child_process');
 const { Readable } = require('stream');
 const { Client: SshClient } = require('ssh2');
@@ -2585,6 +2586,7 @@ app.whenReady().then(async () => {
   restoreWorkspaceRoot();
   agentApprovalMode = readSettings().agentApproval || 'manual';
   buildAppMenu();
+  startScheduler();
   const auth = await authLoad();
   const loggedIn = auth ? await authVerify() : false;
   if (loggedIn) {
@@ -2609,6 +2611,7 @@ app.on('before-quit', () => {
   for (const child of terminals.values()) { try { child.kill(); } catch {} }
   for (const s of remotes.values()) { try { s.client.end ? s.client.end() : s.client.close(); } catch {} }
   for (const s of dbSessions.values()) { dbEngine.closeSession(s).catch(() => {}); }
+  if (loopbackServer) { try { loopbackServer.close(); } catch { /* abaikan */ } }
 });
 
 ipcMain.handle('settings:get', () => {
@@ -2856,6 +2859,452 @@ ipcMain.handle('settings:set', (event, payload) => {
 
 // ---------- Plugin Marketplace (kredensial + tool) ----------
 // Kredensial diisi customer dengan ACCOUNT MEREKA SENDIRI (bukan account Sahabat).
+const SHOPEE_HOST = 'https://partner.shopeemobile.com';
+
+function shopeeRequest(cfg, method, path, params) {
+  const partnerId = String(cfg.partnerId || '');
+  const partnerKey = String(cfg.partnerKey || '');
+  const shopId = String(cfg.shopId || '');
+  const accessToken = String(cfg.accessToken || '');
+  if (!partnerId || !partnerKey) throw new Error('Partner ID / Partner Key belum diisi.');
+  const timestamp = Math.floor(Date.now() / 1000);
+  let signBase = partnerId + path + timestamp;
+  if (accessToken) {
+    signBase += accessToken;
+    if (shopId && shopId !== '0') signBase += shopId;
+  } else if (shopId && shopId !== '0') {
+    signBase += shopId;
+  }
+  const sign = crypto.createHmac('sha256', partnerKey).update(signBase).digest('hex');
+  const query = { partner_id: partnerId, timestamp: String(timestamp), sign };
+  if (accessToken) query.access_token = accessToken;
+  if (shopId) query.shop_id = shopId;
+  let body;
+  if (method === 'GET') {
+    for (const [k, v] of Object.entries(params || {})) {
+      if (v !== undefined && v !== null && v !== '') query[k] = v;
+    }
+  } else {
+    body = JSON.stringify(params || {});
+  }
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) qs.set(k, v);
+  return fetch(SHOPEE_HOST + path + '?' + qs.toString(), {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body
+  }).then(async (res) => {
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200)); }
+    if (!res.ok || (data.error && data.error !== '')) {
+      throw new Error(data.message || data.error || ('HTTP ' + res.status));
+    }
+    return data.response !== undefined ? data.response : data;
+  });
+}
+
+const SHOPEE_STATUS_ID = {
+  UNPAID: 'Belum dibayar',
+  READY_TO_SHIP: 'Siap dikirim',
+  INPROCESS: 'Diproses',
+  SHIPPED: 'Dikirim',
+  COMPLETED: 'Selesai',
+  CANCELLED: 'Dibatalkan',
+  RETURNED: 'Dikembalikan'
+};
+
+async function shopeeDailyReport(cfg, p) {
+  const now = Math.floor(Date.now() / 1000);
+  const from = p.timeFrom || (now - 24 * 3600);
+  const to = p.timeTo || now;
+  const list = await shopeeRequest(cfg, 'GET', '/api/v2/order/get_order_list', {
+    time_range_field: p.timeRangeField || 'create_time',
+    time_from: from,
+    time_to: to,
+    page_size: p.pageSize || 50
+  });
+  const orders = (list && list.order_list) || [];
+  const sns = orders.map((o) => o.order_sn).filter(Boolean);
+  let details = [];
+  if (sns.length) {
+    const det = await shopeeRequest(cfg, 'GET', '/api/v2/order/get_order_detail', {
+      order_sn_list: sns.join(','),
+      response_optional_fields: 'total_amount,item_list,order_status'
+    });
+    details = (det && det.order_list) || [];
+  }
+  const byStatus = {};
+  let totalAmount = 0;
+  const itemCount = {};
+  for (const d of details) {
+    const st = String(d.order_status || 'UNKNOWN');
+    byStatus[st] = (byStatus[st] || 0) + 1;
+    const amt = Number(d.total_amount || 0);
+    if (!Number.isNaN(amt)) totalAmount += amt;
+    for (const it of (d.item_list || [])) {
+      const name = it.item_name || it.model_name || 'Item';
+      itemCount[name] = (itemCount[name] || 0) + Number(it.model_quantity_purchased || 1);
+    }
+  }
+  const topItems = Object.entries(itemCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, qty]) => ({ name, qty }));
+  const statusId = {};
+  for (const [k, v] of Object.entries(byStatus)) statusId[SHOPEE_STATUS_ID[k] || k] = v;
+  return {
+    marketplace: 'Shopee',
+    range: {
+      from: new Date(from * 1000).toISOString(),
+      to: new Date(to * 1000).toISOString()
+    },
+    totalOrders: orders.length,
+    totalAmount,
+    byStatus: statusId,
+    topItems,
+    orders: details.slice(0, 20)
+  };
+}
+
+async function tokopediaDailyReport(cfg, p) {
+  const token = await tokopediaToken(cfg);
+  const fsd = encodeURIComponent(cfg.fsdId || '');
+  const res = await tokopediaRequest(cfg, token, 'GET', '/inventory/v1/fs/' + fsd + '/product/list', {
+    shop_id: p.shopId || cfg.shopId || '',
+    rows: p.rows || 100,
+    start: p.start || 0,
+    order_by: p.orderBy || ''
+  });
+  const products = (res && (res.data || res.products || res.items || [])) || [];
+  let totalStock = 0;
+  let totalPrice = 0;
+  const items = [];
+  for (const pr of products) {
+    const price = Number(pr.price || pr.base_price || 0) || 0;
+    const stock = Number(pr.stock || 0) || 0;
+    totalPrice += price;
+    totalStock += stock;
+    items.push({
+      id: pr.id || pr.product_id || pr.sku || '',
+      name: pr.name || pr.product_name || pr.sku || 'Produk',
+      price,
+      stock
+    });
+  }
+  const count = items.length;
+  return {
+    marketplace: 'Tokopedia',
+    totalProducts: count,
+    totalStock,
+    averagePrice: count ? Math.round(totalPrice / count) : 0,
+    products: items.slice(0, 20)
+  };
+}
+
+async function tokopediaToken(cfg) {
+  const clientId = String(cfg.clientId || '');
+  const clientSecret = String(cfg.clientSecret || '');
+  if (!clientId || !clientSecret) throw new Error('Client ID / Client Secret belum diisi.');
+  const basic = Buffer.from(clientId + ':' + clientSecret).toString('base64');
+  const res = await fetch('https://accounts.tokopedia.com/token?grant_type=client_credentials', {
+    method: 'POST',
+    headers: { Authorization: 'Basic ' + basic, 'Content-Type': 'application/x-www-form-urlencoded' }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) throw new Error(data.error_description || data.error || ('HTTP ' + res.status));
+  return data.access_token;
+}
+
+function tokopediaRequest(cfg, token, method, path, params) {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params || {})) {
+    if (v !== undefined && v !== null && v !== '') qs.set(k, v);
+  }
+  const url = 'https://fs.tokopedia.net' + path + (qs.toString() ? '?' + qs.toString() : '');
+  return fetch(url, {
+    method,
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }
+  }).then(async (res) => {
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200)); }
+    if (!res.ok) throw new Error(data.message || data.error || ('HTTP ' + res.status));
+    return data;
+  });
+}
+
+// ---------- TikTok OAuth & API ----------
+const TIKTOK_API = 'https://open.tiktokapis.com';
+const TIKTOK_AUTH = 'https://www.tiktok.com/v2/auth/authorize/';
+
+async function tiktokExchange(cfg, code) {
+  const clientKey = String(cfg.clientKey || '');
+  const clientSecret = String(cfg.clientSecret || '');
+  const redirectUri = String(pendingTikTokRedirectUri || cfg.redirectUri || '');
+  if (!clientKey || !clientSecret) throw new Error('Client Key / Client Secret belum diisi.');
+  const res = await fetch(TIKTOK_API + '/v2/oauth/token/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_key: clientKey,
+      client_secret: clientSecret,
+      code: code,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+      code_verifier: pendingTikTokVerifier || ''
+    }).toString()
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) {
+    throw new Error((data.error && (data.error_description || data.error.message)) || data.message || ('HTTP ' + res.status));
+  }
+  const d = data.data || data;
+  return {
+    accessToken: d.access_token || '',
+    refreshToken: d.refresh_token || '',
+    expiresIn: d.expires_in || 7200,
+    refreshExpiresIn: d.refresh_expires_in || 15552000,
+    openId: d.open_id || '',
+    scope: d.scope || ''
+  };
+}
+
+// Simpan seluruh data token sesuai docs TikTok: access_token, refresh_token,
+// open_id, scope, dan waktu kedaluwarsa (dihitung dari expires_in / refresh_expires_in).
+function tiktokSaveTokens(id, tokens) {
+  const cfg = loadPluginConfig(id) || {};
+  const now = Date.now();
+  const next = {
+    ...cfg,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    accessTokenExpiresAt: now + (Number(tokens.expiresIn) || 7200) * 1000,
+    refreshTokenExpiresAt: now + (Number(tokens.refreshExpiresIn) || 15552000) * 1000
+  };
+  if (tokens.openId) next.openId = tokens.openId;
+  if (tokens.scope) next.scope = tokens.scope;
+  savePluginConfig(id, next);
+  return next;
+}
+
+async function tiktokRefreshToken(cfg) {
+  const clientKey = String(cfg.clientKey || '');
+  const refreshToken = String(cfg.refreshToken || '');
+  if (!clientKey || !refreshToken) throw new Error('Client Key / Refresh Token belum diisi.');
+  const res = await fetch(TIKTOK_API + '/v2/oauth/token/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_key: clientKey,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    }).toString()
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error((data.error && (data.error_description || data.error.message)) || data.message || ('HTTP ' + res.status));
+  const d = data.data || data;
+  return {
+    accessToken: d.access_token || '',
+    refreshToken: d.refresh_token || refreshToken,
+    expiresIn: d.expires_in || 7200,
+    refreshExpiresIn: d.refresh_expires_in || 15552000,
+    openId: d.open_id || '',
+    scope: d.scope || ''
+  };
+}
+
+async function tiktokRequest(cfg, path, params) {
+  let token = String(cfg.accessToken || '');
+  if (!token) throw new Error('Access Token belum diisi. Klik "Hubungkan TikTok" untuk otorisasi.');
+  const now = Date.now();
+  const rfExpAt = Number(cfg.refreshTokenExpiresAt || 0);
+  if (rfExpAt && now >= rfExpAt) {
+    throw new Error('Refresh token sudah kedaluwarsa. Klik "Hubungkan TikTok" untuk otorisasi ulang.');
+  }
+  const expAt = Number(cfg.accessTokenExpiresAt || 0);
+  // Refresh proaktif sebelum access token kedaluwarsa (berlaku 2 jam).
+  if ((!expAt || now >= expAt - 60000) && cfg.refreshToken) {
+    const refreshed = await tiktokRefreshToken(cfg);
+    cfg = tiktokSaveTokens('tiktok', refreshed);
+    token = refreshed.accessToken;
+  }
+  const doFetch = (tk) => {
+    const qs = new URLSearchParams(params || {}).toString();
+    return fetch(TIKTOK_API + path + (qs ? '?' + qs : ''), {
+      headers: { Authorization: 'Bearer ' + tk }
+    });
+  };
+  let res = await doFetch(token);
+  if (res.status === 401 && cfg.refreshToken) {
+    const refreshed = await tiktokRefreshToken(cfg);
+    cfg = tiktokSaveTokens('tiktok', refreshed);
+    res = await doFetch(refreshed.accessToken);
+  }
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 200)); }
+  if (!res.ok) throw new Error((data.error && data.error.message) || data.message || ('HTTP ' + res.status));
+  return data;
+}
+
+const TIKTOK_LOOPBACK_PORT = 55793;
+const TIKTOK_REDIRECT_URI = 'http://127.0.0.1:' + TIKTOK_LOOPBACK_PORT + '/callback/';
+
+let loopbackServer = null;
+let loopbackPort = 0;
+let loopbackWin = null;
+let pendingOAuthId = null;
+
+function startLoopbackServer(win, preferredPort) {
+  return new Promise((resolve, reject) => {
+    if (loopbackServer) { loopbackWin = win; resolve(loopbackPort); return; }
+    loopbackWin = win;
+    const port = Number(preferredPort) || TIKTOK_LOOPBACK_PORT;
+    const server = http.createServer(async (req, res) => {
+      try {
+        const url = new URL(req.url, 'http://127.0.0.1');
+        const code = url.searchParams.get('code');
+        const error = url.searchParams.get('error');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        if (code) {
+          res.end('<html><body style="font-family:sans-serif;text-align:center;padding:40px;background:#0a0d14;color:#e5e7eb;"><h2 style="color:#5b8def;">Berhasil terhubung!</h2><p>Kamu bisa tutup window ini dan kembali ke aplikasi.</p></body></html>');
+          const id = pendingOAuthId;
+          pendingOAuthId = null;
+          if (id) {
+            try {
+              const cfg = loadPluginConfig(id) || {};
+              const tokens = await tiktokExchange(cfg, code);
+              tiktokSaveTokens(id, tokens);
+              if (loopbackWin && !loopbackWin.isDestroyed()) loopbackWin.webContents.send('plugins:oauthResult', { ok: true, id });
+            } catch (e) {
+              if (loopbackWin && !loopbackWin.isDestroyed()) loopbackWin.webContents.send('plugins:oauthResult', { ok: false, id, error: (e && e.message) || String(e) });
+            }
+          }
+        } else {
+          res.end('<html><body style="font-family:sans-serif;text-align:center;padding:40px;background:#0a0d14;color:#e5e7eb;"><h2 style="color:#ef4444;">Otorisasi gagal/dibatalkan.</h2></body></html>');
+          const id = pendingOAuthId;
+          pendingOAuthId = null;
+          if (loopbackWin && !loopbackWin.isDestroyed()) loopbackWin.webContents.send('plugins:oauthResult', { ok: false, id, error: error || 'cancel' });
+        }
+      } catch (e) {
+        try { res.writeHead(500); res.end('error'); } catch { /* abaikan */ }
+      }
+    });
+    server.listen(port, '127.0.0.1', () => {
+      loopbackServer = server;
+      loopbackPort = server.address().port;
+      resolve(loopbackPort);
+    });
+    server.on('error', (err) => {
+      if (err && err.code === 'EADDRINUSE') {
+        reject(new Error('Port ' + port + ' sudah dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.'));
+      } else {
+        reject(err);
+      }
+    });
+  });
+}
+
+let pendingTikTokVerifier = null;
+let pendingTikTokRedirectUri = null;
+
+function tiktokAuthUrl(cfg, redirectUri) {
+  const clientKey = String(cfg.clientKey || '');
+  const redir = String(redirectUri || cfg.redirectUri || '');
+  if (!clientKey) throw new Error('Client Key belum diisi.');
+  const state = 'sahabat-' + Math.random().toString(36).slice(2, 10);
+  const scope = 'user.info.basic';
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  pendingTikTokVerifier = verifier;
+  pendingTikTokRedirectUri = redir;
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  return TIKTOK_AUTH + '?client_key=' + encodeURIComponent(clientKey) +
+    '&redirect_uri=' + encodeURIComponent(redir) +
+    '&response_type=code&scope=' + encodeURIComponent(scope) + '&state=' + encodeURIComponent(state) +
+    '&code_challenge=' + encodeURIComponent(challenge) + '&code_challenge_method=S256';
+}
+
+// ---------- Jadwal Otomatis (laporan berkala) ----------
+function schedulesFile() {
+  return path.join(app.getPath('userData'), 'schedules.json');
+}
+
+function readSchedules() {
+  try { return JSON.parse(fs.readFileSync(schedulesFile(), 'utf8')); }
+  catch { return []; }
+}
+
+function writeSchedules(list) {
+  fs.mkdirSync(path.dirname(schedulesFile()), { recursive: true });
+  fs.writeFileSync(schedulesFile(), JSON.stringify(list, null, 2));
+}
+
+let scheduleTimer = null;
+const scheduleRunToday = new Set();
+
+async function runSchedule(s) {
+  const target = s.marketplace || 'shopee';
+  const ids = target === 'all' ? ['shopee', 'tokopedia'] : [target];
+  const results = {};
+  let error = null;
+  for (const id of ids) {
+    const def = PLUGIN_DEFS[id];
+    const cfg = loadPluginConfig(id);
+    if (!def || !cfg || !Object.keys(cfg).length) {
+      results[id] = { ok: false, error: 'Plugin belum dikonfigurasi.' };
+      error = results[id].error;
+      continue;
+    }
+    try {
+      const res = await def.call(cfg, 'get_daily_report', {});
+      results[id] = { ok: true, result: res };
+    } catch (e) {
+      results[id] = { ok: false, error: (e && e.message) || String(e) };
+      error = results[id].error;
+    }
+  }
+  const win = BrowserWindow.getAllWindows()[0];
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('schedule:run', { schedule: s, results, error });
+  }
+  try {
+    if (Notification.isSupported()) {
+      const notif = new Notification({
+        title: s.name || 'Jadwal Otomatis',
+        body: error ? ('Gagal: ' + error) : 'Laporan otomatis sudah dibuat.'
+      });
+      notif.on('click', () => { if (win && !win.isDestroyed()) { win.show(); win.focus(); } });
+      notif.show();
+    }
+  } catch { /* abaikan */ }
+  const list = readSchedules();
+  const item = list.find((x) => x.id === s.id);
+  if (item) { item.lastRun = new Date().toISOString(); writeSchedules(list); }
+}
+
+function startScheduler() {
+  if (scheduleTimer) return;
+  scheduleTimer = setInterval(() => {
+    let list;
+    try { list = readSchedules(); } catch { return; }
+    if (!list.length) return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    for (const s of list) {
+      if (!s.enabled || !s.time) continue;
+      if (s.time !== hh + ':' + mm) continue;
+      const key = s.id + ':' + today;
+      if (scheduleRunToday.has(key)) continue;
+      if (s.lastRun && String(s.lastRun).slice(0, 10) === today) continue;
+      scheduleRunToday.add(key);
+      runSchedule(s).catch(() => {});
+    }
+  }, 20000);
+}
+
 const PLUGIN_DEFS = {
   cloudflare: {
     name: 'Cloudflare',
@@ -2944,11 +3393,25 @@ const PLUGIN_DEFS = {
     name: 'TikTok',
     icon: '🎵',
     desc: 'Upload & jadwalkan video TikTok',
+    oauth: true,
     fields: [
-      { key: 'accessToken', label: 'TikTok Access Token', placeholder: 'Access token dari TikTok for Developers', help: 'Token dari developers.tiktok.com (Content Posting API).' }
+      { key: 'clientKey', label: 'Client Key', placeholder: 'Client Key dari TikTok for Developers', help: 'Dari developers.tiktok.com → Manage Apps → App Credentials. Pastikan produk Login Kit aktif.' },
+      { key: 'clientSecret', label: 'Client Secret', placeholder: 'Client Secret', help: 'Rahasia OAuth. Tidak dikirim ke server Sahabat.' },
+      { key: 'redirectUri', label: 'Redirect URI (opsional)', placeholder: 'http://127.0.0.1:55793/callback/', help: 'Default: http://127.0.0.1:55793/callback/ — daftarkan PERSIS sama di TikTok Developer → Login Kit → Redirect URI. TikTok tidak mendukung wildcard.' },
+      { key: 'accessToken', label: 'Access Token (opsional)', placeholder: 'Terisi otomatis lewat tombol Hubungkan', help: 'Berlaku 2 jam. Diisi otomatis oleh proses OAuth.' },
+      { key: 'refreshToken', label: 'Refresh Token (opsional)', placeholder: 'Untuk perpanjang access token', help: 'Berlaku 180 hari. Diisi otomatis oleh proses OAuth.' }
     ],
-    async test() { return { message: 'Token tersimpan (tes koneksi TikTok terbatas)' }; },
-    async call(cfg, action) { throw new Error('Aksi TikTok belum diterapkan: ' + action); }
+    async test(cfg) {
+      const info = await tiktokRequest(cfg, '/v2/user/info/', { fields: 'open_id,union_id,display_name,username,avatar_url' });
+      const user = info && info.data && info.data.user;
+      return { message: 'Terhubung: ' + ((user && (user.display_name || user.username)) || 'akun TikTok') };
+    },
+    async call(cfg, action, p) {
+      p = p || {};
+      if (action === 'get_user_info') return tiktokRequest(cfg, '/v2/user/info/', { fields: 'open_id,union_id,display_name,username,avatar_url,follower_count,video_count' });
+      if (action === 'list_videos') return tiktokRequest(cfg, '/v2/video/list/', { fields: 'id,title,create_time,view_count,like_count,comment_count,share_count', max_count: p.maxCount || 20 });
+      throw new Error('Aksi tidak dikenal: ' + action);
+    }
   },
   youtube: {
     name: 'YouTube Reels',
@@ -2972,6 +3435,141 @@ const PLUGIN_DEFS = {
     fields: [],
     async test() { return { message: 'Siap digunakan (tanpa kredensial)' }; },
     async call(cfg, action) { throw new Error('Aksi DevTools belum diterapkan: ' + action); }
+  },
+  shopee: {
+    name: 'Shopee',
+    icon: '🛒',
+    desc: 'Kelola pesanan, produk, stok & harga toko Shopee',
+    fields: [
+      { key: 'partnerId', label: 'Partner ID', placeholder: 'Partner ID Shopee Open Platform', help: 'Ambil di console Shopee Open Platform → App List.' },
+      { key: 'partnerKey', label: 'Partner Key', placeholder: 'Partner Key (rahasia)', help: 'Kunci HMAC-SHA256. Tidak dikirim ke server.' },
+      { key: 'shopId', label: 'Shop ID', placeholder: 'ID toko Shopee', help: 'ID toko dari hasil otorisasi seller.' },
+      { key: 'accessToken', label: 'Access Token', placeholder: 'Access token toko', help: 'Berlaku 4 jam. Diperbarui otomatis via refresh token.' },
+      { key: 'refreshToken', label: 'Refresh Token', placeholder: 'Refresh token toko (opsional)', help: 'Berlaku 30 hari. Untuk perpanjang access token.' }
+    ],
+    async test(cfg) {
+      const res = await shopeeRequest(cfg, 'GET', '/api/v2/shop/get_shop_info', {});
+      return { message: 'Terhubung: ' + ((res && res.shop_name) || cfg.shopId || 'toko Shopee') };
+    },
+    async call(cfg, action, p) {
+      p = p || {};
+      if (action === 'get_shop_info') return shopeeRequest(cfg, 'GET', '/api/v2/shop/get_shop_info', {});
+      if (action === 'get_order_list') return shopeeRequest(cfg, 'GET', '/api/v2/order/get_order_list', {
+        time_range_field: p.timeRangeField || 'create_time',
+        time_from: p.timeFrom || (Math.floor(Date.now() / 1000) - 30 * 24 * 3600),
+        time_to: p.timeTo || Math.floor(Date.now() / 1000),
+        page_size: p.pageSize || 50,
+        cursor: p.cursor || '',
+        order_status: p.orderStatus || ''
+      });
+      if (action === 'get_order_detail') return shopeeRequest(cfg, 'GET', '/api/v2/order/get_order_detail', {
+        order_sn_list: p.orderSnList || p.orderSn || ''
+      });
+      if (action === 'get_item_list') return shopeeRequest(cfg, 'GET', '/api/v2/product/get_item_list', {
+        offset: p.offset != null ? p.offset : ((p.pageNo || 1) - 1) * (p.pageSize || 50),
+        page_size: p.pageSize || 50,
+        item_status: p.itemStatus || ''
+      });
+      if (action === 'add_item') return shopeeRequest(cfg, 'POST', '/api/v2/product/add_item', {
+        item_name: p.itemName || p.item_name,
+        description: p.description || '',
+        price: p.price,
+        stock: p.stock,
+        category_id: p.categoryId || p.category_id,
+        weight: p.weight,
+        image: p.image,
+        item_status: p.itemStatus || p.item_status || 1
+      });
+      if (action === 'update_stock') return shopeeRequest(cfg, 'POST', '/api/v2/product/update_stock', {
+        item_id: p.itemId || p.item_id,
+        stock_list: [{
+          model_id: p.modelId || p.model_id || 0,
+          seller_stock: [{ location_id: p.locationId || p.location_id || '', stock: p.stock }]
+        }]
+      });
+      if (action === 'update_price') return shopeeRequest(cfg, 'POST', '/api/v2/product/update_price', {
+        item_id: p.itemId || p.item_id,
+        price_list: [{ model_id: p.modelId || p.model_id || 0, original_price: p.price }]
+      });
+      if (action === 'get_daily_report') return shopeeDailyReport(cfg, p);
+      throw new Error('Aksi tidak dikenal: ' + action);
+    }
+  },
+  tokopedia: {
+    name: 'Tokopedia',
+    icon: '🟢',
+    desc: 'Kelola produk & kategori toko Tokopedia',
+    fields: [
+      { key: 'clientId', label: 'Client ID', placeholder: 'Client ID dari Developer Console', help: 'Ambil di developer.tokopedia.com → Developer Console.' },
+      { key: 'clientSecret', label: 'Client Secret', placeholder: 'Client Secret', help: 'Rahasia OAuth. Tidak dikirim ke server.' },
+      { key: 'fsdId', label: 'FS ID', placeholder: 'Fulfillment Service ID toko', help: 'ID fulfillment service (fsd_id) toko.' },
+      { key: 'shopId', label: 'Shop ID (opsional)', placeholder: 'ID toko Tokopedia', help: 'Diperlukan jika satu FS ID punya banyak toko.' }
+    ],
+    async test(cfg) {
+      const token = await tokopediaToken(cfg);
+      const res = await tokopediaRequest(cfg, token, 'GET', '/v2/products/fs/' + encodeURIComponent(cfg.fsdId || '') + '/1/1', {});
+      const shop = (res && res.header && res.header.shop_name) || cfg.fsdId || 'toko Tokopedia';
+      return { message: 'Terhubung: ' + shop };
+    },
+    async call(cfg, action, p) {
+      p = p || {};
+      const token = await tokopediaToken(cfg);
+      const fsd = encodeURIComponent(cfg.fsdId || '');
+      if (action === 'get_products') return tokopediaRequest(cfg, token, 'GET', '/v2/products/fs/' + fsd + '/' + (p.page || 1) + '/' + (p.perPage || 50), {});
+      if (action === 'get_product') return tokopediaRequest(cfg, token, 'GET', '/inventory/v1/fs/' + fsd + '/product/info', { product_id: p.productId });
+      if (action === 'get_active_products') return tokopediaRequest(cfg, token, 'GET', '/inventory/v1/fs/' + fsd + '/product/list', {
+        shop_id: p.shopId || cfg.shopId || '',
+        rows: p.rows || 50,
+        start: p.start || 0,
+        keyword: p.keyword || '',
+        order_by: p.orderBy || ''
+      });
+      if (action === 'get_daily_report') return tokopediaDailyReport(cfg, p);
+      throw new Error('Aksi tidak dikenal: ' + action);
+    }
+  },
+  bukalapak: {
+    name: 'Bukalapak',
+    icon: '🛍️',
+    desc: 'Kelola produk & pesanan Bukalapak',
+    fields: [
+      { key: 'apiKey', label: 'API Key', placeholder: 'API Key Bukalapak', help: 'API key dari program partner Bukalapak.' }
+    ],
+    async test(cfg) {
+      if (!cfg.apiKey) throw new Error('API Key belum diisi.');
+      return { message: 'API Key tersimpan (tes koneksi Bukalapak segera hadir)' };
+    },
+    async call(cfg, action) { throw new Error('Aksi Bukalapak belum diterapkan: ' + action); }
+  },
+  lazada: {
+    name: 'Lazada',
+    icon: '🟠',
+    desc: 'Kelola produk & pesanan Lazada',
+    fields: [
+      { key: 'appKey', label: 'App Key', placeholder: 'App Key Lazada Open Platform', help: 'App key dari Lazada Open Platform.' },
+      { key: 'appSecret', label: 'App Secret', placeholder: 'App Secret', help: 'Rahasia OAuth Lazada.' },
+      { key: 'accessToken', label: 'Access Token', placeholder: 'Access token Lazada', help: 'Token akses toko Lazada.' }
+    ],
+    async test(cfg) {
+      if (!cfg.appKey || !cfg.accessToken) throw new Error('App Key / Access Token belum diisi.');
+      return { message: 'Kredensial tersimpan (tes koneksi Lazada segera hadir)' };
+    },
+    async call(cfg, action) { throw new Error('Aksi Lazada belum diterapkan: ' + action); }
+  },
+  blibli: {
+    name: 'Blibli',
+    icon: '🔵',
+    desc: 'Kelola produk & pesanan Blibli',
+    fields: [
+      { key: 'clientId', label: 'Client ID', placeholder: 'Client ID Blibli', help: 'Client ID dari partner Blibli.' },
+      { key: 'clientSecret', label: 'Client Secret', placeholder: 'Client Secret', help: 'Rahasia OAuth Blibli.' },
+      { key: 'merchantId', label: 'Merchant ID', placeholder: 'ID merchant Blibli', help: 'ID merchant toko Blibli.' }
+    ],
+    async test(cfg) {
+      if (!cfg.clientId) throw new Error('Client ID belum diisi.');
+      return { message: 'Kredensial tersimpan (tes koneksi Blibli segera hadir)' };
+    },
+    async call(cfg, action) { throw new Error('Aksi Blibli belum diterapkan: ' + action); }
   }
 };
 
@@ -3020,7 +3618,7 @@ ipcMain.handle('plugins:getConfig', (event, id) => {
   const cfg = loadPluginConfig(id) || {};
   const values = {};
   for (const f of def.fields) values[f.key] = cfg[f.key] ? '********' : '';
-  return { ok: true, fields: def.fields, values, connected: pluginConnected(id) };
+  return { ok: true, fields: def.fields, values, connected: pluginConnected(id), oauth: !!def.oauth };
 });
 
 ipcMain.handle('plugins:saveConfig', (event, id, cfg) => {
@@ -3051,6 +3649,90 @@ ipcMain.handle('plugins:call', async (event, id, action, params) => {
   if (!cfg || !Object.keys(cfg).length) return { ok: false, error: 'Plugin belum dikonfigurasi. Buka Marketplace → Install → isi kredensial.' };
   try { return { ok: true, result: await def.call(cfg, action, params || {}) }; }
   catch (err) { return { ok: false, error: (err && err.message) || String(err) }; }
+});
+
+ipcMain.handle('plugins:oauthUrl', async (event, id) => {
+  const def = PLUGIN_DEFS[id];
+  if (!def) return { ok: false, error: 'Plugin tidak dikenal.' };
+  if (!def.oauth) return { ok: false, error: 'Plugin ini tidak mendukung OAuth.' };
+  const cfg = loadPluginConfig(id) || {};
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const custom = String(cfg.redirectUri || '').trim();
+    let preferred = TIKTOK_LOOPBACK_PORT;
+    if (custom) { try { preferred = new URL(custom).port || preferred; } catch { /* abaikan, pakai default */ } }
+    const existed = !!loopbackServer;
+    const port = await startLoopbackServer(win, preferred);
+    const redirectUri = (custom && !existed) ? custom : 'http://127.0.0.1:' + port + '/callback/';
+    pendingOAuthId = id;
+    const url = tiktokAuthUrl(cfg, redirectUri);
+    return { ok: true, url, redirectUri };
+  } catch (err) {
+    return { ok: false, error: (err && err.message) || String(err) };
+  }
+});
+
+ipcMain.handle('plugins:oauthCode', async (event, id, code) => {
+  const def = PLUGIN_DEFS[id];
+  if (!def) return { ok: false, error: 'Plugin tidak dikenal.' };
+  if (!def.oauth) return { ok: false, error: 'Plugin ini tidak mendukung OAuth.' };
+  const cfg = loadPluginConfig(id) || {};
+  try {
+    const tokens = await tiktokExchange(cfg, String(code || '').trim());
+    tiktokSaveTokens(id, tokens);
+    return { ok: true, ...tokens };
+  } catch (err) {
+    return { ok: false, error: (err && err.message) || String(err) };
+  }
+});
+
+ipcMain.handle('shell:openExternal', (event, url) => {
+  if (!url) return { ok: false, error: 'URL kosong.' };
+  try { shell.openExternal(url); return { ok: true }; }
+  catch (err) { return { ok: false, error: (err && err.message) || String(err) }; }
+});
+
+// ---------- Jadwal Otomatis (laporan berkala) ----------
+ipcMain.handle('schedules:list', () => ({ ok: true, schedules: readSchedules() }));
+
+ipcMain.handle('schedules:add', (event, payload) => {
+  const list = readSchedules();
+  const item = {
+    id: 'schedule-' + Date.now().toString(36),
+    name: (payload && payload.name) || 'Jadwal Otomatis',
+    marketplace: (payload && payload.marketplace) || 'shopee',
+    time: (payload && payload.time) || '08:00',
+    enabled: !payload || payload.enabled !== false,
+    lastRun: null,
+    createdAt: new Date().toISOString()
+  };
+  list.push(item);
+  writeSchedules(list);
+  return { ok: true, schedule: item };
+});
+
+ipcMain.handle('schedules:update', (event, id, payload) => {
+  const list = readSchedules();
+  const item = list.find((x) => x.id === id);
+  if (!item) return { ok: false, error: 'Jadwal tidak ditemukan.' };
+  if (payload && payload.name !== undefined) item.name = payload.name;
+  if (payload && payload.marketplace !== undefined) item.marketplace = payload.marketplace;
+  if (payload && payload.time !== undefined) item.time = payload.time;
+  if (payload && payload.enabled !== undefined) item.enabled = payload.enabled;
+  writeSchedules(list);
+  return { ok: true, schedule: item };
+});
+
+ipcMain.handle('schedules:remove', (event, id) => {
+  writeSchedules(readSchedules().filter((x) => x.id !== id));
+  return { ok: true };
+});
+
+ipcMain.handle('schedules:run', async (event, id) => {
+  const item = readSchedules().find((x) => x.id === id);
+  if (!item) return { ok: false, error: 'Jadwal tidak ditemukan.' };
+  await runSchedule(item);
+  return { ok: true };
 });
 
 ipcMain.handle('models:list', async () => {
