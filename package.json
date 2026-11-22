@@ -16,6 +16,7 @@
   "build": {
     "appId": "com.sahabatmobile.desktop",
     "productName": "SahabatMobile Desktop",
+    "artifactName": "sahabat-desktop_${version}_${arch}.${ext}",
     "icon": "build/icon.png",
     "asarUnpack": [
       "extensions/**/*"
@@ -55,7 +56,8 @@
       "target": [
         "AppImage",
         "deb"
-      ]
+      ],
+      "maintainer": "SahabatMobile <support@sahabatmobile.com>"
     }
   },
   "dependencies": {
