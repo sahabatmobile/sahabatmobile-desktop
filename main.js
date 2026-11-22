@@ -2543,9 +2543,25 @@ function showAuthWindow() {
   authWindow.webContents.on('did-navigate', onNav);
   authWindow.webContents.on('did-navigate-in-page', onNav);
   authWindow.webContents.on('did-finish-load', () => {
-    authWindow.webContents.executeJavaScript(
-      "document.addEventListener('submit', function(){ var e=document.getElementById('email'); if(e){ try{ localStorage.setItem('sahabat.login.email', e.value); }catch(x){} } }, true);"
-    ).catch(() => {});
+    authWindow.webContents.executeJavaScript(`
+      document.addEventListener('submit', function () {
+        var e = document.getElementById('email');
+        if (e) { try { localStorage.setItem('sahabat.login.email', e.value); } catch (x) {} }
+      }, true);
+      (function () {
+        var daftar = Array.prototype.slice.call(document.querySelectorAll('a')).filter(function (a) {
+          var teks = (a.textContent || '').toLowerCase();
+          var href = a.getAttribute('href') || '';
+          return teks.indexOf('daftar akun baru') !== -1 || href.indexOf('/register') !== -1;
+        });
+        daftar.forEach(function (a) {
+          var p = document.createElement('p');
+          p.style.cssText = 'margin:1rem 0;text-align:center;font-size:0.8125rem;color:#64748b;line-height:1.5';
+          p.textContent = 'Masuk dengan email yang sama seperti saat mendaftar agar saldo dan deposit Anda tetap terhubung.';
+          if (a.parentNode) a.parentNode.replaceChild(p, a);
+        });
+      })();
+    `).catch(() => {});
   });
   authWindow.loadURL(AUTH_LOGIN_URL);
   authWindow.on('closed', () => { authWindow = null; });
@@ -2793,6 +2809,24 @@ ipcMain.handle('update:download', async (event, payload) => {
 ipcMain.handle('update:install', async (event, filePath) => {
   const target = String(filePath || '');
   if (!target || !fs.existsSync(target)) return { ok: false, error: 'File update tidak ditemukan.' };
+
+  // AppImage: ganti file yang sedang jalan lalu restart. rename() di Linux
+  // boleh menimpa executable yang masih dipakai, jadi tidak perlu uninstall
+  // atau install ulang - cukup download lalu apply.
+  const appImage = process.platform === 'linux' ? String(process.env.APPIMAGE || '') : '';
+  if (appImage && /\.appimage$/i.test(target) && /\.appimage$/i.test(appImage)) {
+    try {
+      const sementara = appImage + '.new';
+      fs.copyFileSync(target, sementara);
+      fs.chmodSync(sementara, 0o755);
+      fs.renameSync(sementara, appImage);
+      setImmediate(() => { app.relaunch(); app.exit(0); });
+      return { ok: true, restarted: true };
+    } catch (err) {
+      return { ok: false, error: 'Gagal mengganti AppImage: ' + (err && err.message ? err.message : String(err)) };
+    }
+  }
+
   const err = await shell.openPath(target);
   if (err) return { ok: false, error: err };
   return { ok: true };
